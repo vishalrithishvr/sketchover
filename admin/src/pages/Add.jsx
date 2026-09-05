@@ -14,7 +14,7 @@ const Add = ({token}) => {
    const [name, setName] = useState("");
    const [description, setDescription] = useState("");
    const [price, setPrice] = useState("");
-   const [category, setCategory] = useState("Cars & Bikes");
+   const [category, setCategory] = useState("Autosport");
    const [subCategory, setSubCategory] = useState("Single Poster");
    const [bestseller, setBestseller] = useState(false);
    const [sizes, setSizes] = useState([]);
@@ -100,13 +100,13 @@ const Add = ({token}) => {
             <div>
               <p className='mb-2'>Product category</p>
               <select onChange={(e) => setCategory(e.target.value)} className='w-full px-3 py-2'>
-                  <option value="Cars & Bikes">Cars & Bikes</option>
-                  <option value="Superheroes">Superheroes</option>
+                  <option value="Autosport">Autosport</option>
                   <option value="Anime">Anime</option>
-                  <option value="Movies">Movies</option>
-                  <option value="Music">Music</option>
                   <option value="Sports">Sports</option>
-                  <option value="Motivational">Motivational</option>
+                  <option value="TV Series">TV Series</option>
+                  <option value="Music">Music</option>
+                  <option value="Video-Games">Video-Games</option>
+                  <option value="Motivate">Motivate</option>
               </select>
             </div>
 
@@ -128,17 +128,11 @@ const Add = ({token}) => {
         <div>
           <p className='mb-2'>Poster Sizes</p>
           <div className='flex gap-3'>
-            <div onClick={()=>setSizes(prev => prev.includes("A4") ? prev.filter( item => item !== "A4") : [...prev,"A4"])}>
-              <p className={`${sizes.includes("A4") ? "bg-pink-100" : "bg-slate-200" } px-3 py-1 cursor-pointer`}>A4</p>
-            </div>
-
-            <div onClick={()=>setSizes(prev => prev.includes("A3") ? prev.filter( item => item !== "A3") : [...prev,"A3"])}>
-              <p className={`${sizes.includes("A3") ? "bg-pink-100" : "bg-slate-200" } px-3 py-1 cursor-pointer`}>A3</p>
-            </div>
-
-            <div onClick={()=>setSizes(prev => prev.includes("A2") ? prev.filter( item => item !== "A2") : [...prev,"A2"])}>
-              <p className={`${sizes.includes("A2") ? "bg-pink-100" : "bg-slate-200" } px-3 py-1 cursor-pointer`}>A2</p>
-            </div>
+            {["A5", "A4", "A3", "A3+"].map((s) => (
+              <div key={s} onClick={()=>setSizes(prev => prev.includes(s) ? prev.filter( item => item !== s) : [...prev,s])}>
+                <p className={`${sizes.includes(s) ? "bg-pink-100" : "bg-slate-200" } px-3 py-1 cursor-pointer`}>{s}</p>
+              </div>
+            ))}
           </div>
         </div>
 

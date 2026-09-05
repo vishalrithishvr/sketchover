@@ -1,65 +1,28 @@
 import React, { useContext, useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, Link } from 'react-router-dom'
 import { ShopContext } from '../context/ShopContext'
 import Title from '../components/Title';
 import ProductItem from '../components/ProductItem';
 import Reveal from '../components/Reveal';
-import { ChevronDownIcon } from '../components/icons/NavIcons';
+import { CloseIcon } from '../components/icons/NavIcons';
 
-const CATEGORIES = ['Cars & Bikes', 'Superheroes', 'Anime', 'Movies', 'Music', 'Sports', 'Motivational']
-const TYPES = ['Single Poster', 'Poster Set']
-
-const FilterChip = ({ label, checked, onChange }) => (
-  <label className='cursor-pointer select-none'>
-    <input type='checkbox' className='peer sr-only' checked={checked} onChange={onChange} value={label} />
-    <span className='inline-block px-3 py-1.5 rounded-full border border-gray-300 text-xs sm:text-sm text-gray-600 transition-colors peer-checked:bg-black peer-checked:text-white peer-checked:border-black hover:border-gray-500'>
-      {label}
-    </span>
-  </label>
-)
+const SIZES = ['A5', 'A4', 'A3', 'A3+']
 
 const Collection = () => {
 
   const { products , search , showSearch } = useContext(ShopContext);
   const [searchParams] = useSearchParams();
-  const [showFilter,setShowFilter] = useState(false);
   const [filterProducts,setFilterProducts] = useState([]);
-  const [category,setCategory] = useState(()=> {
-    const fromUrl = searchParams.get('category');
-    return fromUrl ? [fromUrl] : [];
-  });
-  const [subCategory,setSubCategory] = useState([]);
-  const [sortType,setSortType] = useState('relavent')
+  const [sizeFilter,setSizeFilter] = useState([]);
+  const [sortType,setSortType] = useState(()=> searchParams.get('sort') === 'new' ? 'new' : 'relavent')
+  const category = searchParams.get('category');
+  const bestsellerOnly = searchParams.get('bestseller') === 'true';
 
-  const toggleCategory = (e) => {
-
-    if (category.includes(e.target.value)) {
-        setCategory(prev=> prev.filter(item => item !== e.target.value))
-    }
-    else{
-      setCategory(prev => [...prev,e.target.value])
-    }
-
+  const toggleSize = (size) => {
+    setSizeFilter(prev => prev.includes(size) ? prev.filter(s => s !== size) : [...prev, size])
   }
 
-  const toggleSubCategory = (e) => {
-
-    if (subCategory.includes(e.target.value)) {
-      setSubCategory(prev=> prev.filter(item => item !== e.target.value))
-    }
-    else{
-      setSubCategory(prev => [...prev,e.target.value])
-    }
-  }
-
-  const clearFilters = () => {
-    setCategory([])
-    setSubCategory([])
-  }
-
-  const activeFilterCount = category.length + subCategory.length
-
-  const applyFilter = () => {
+  useEffect(()=>{
 
     let productsCopy = products.slice();
 
@@ -67,113 +30,82 @@ const Collection = () => {
       productsCopy = productsCopy.filter(item => item.name.toLowerCase().includes(search.toLowerCase()))
     }
 
-    if (category.length > 0) {
-      productsCopy = productsCopy.filter(item => category.includes(item.category));
+    if (category) {
+      productsCopy = productsCopy.filter(item => item.category === category);
     }
 
-    if (subCategory.length > 0 ) {
-      productsCopy = productsCopy.filter(item => subCategory.includes(item.subCategory))
+    if (bestsellerOnly) {
+      productsCopy = productsCopy.filter(item => item.bestseller);
+    }
+
+    if (sizeFilter.length > 0) {
+      productsCopy = productsCopy.filter(item => item.sizes.some(s => sizeFilter.includes(s)));
+    }
+
+    switch (sortType) {
+      case 'low-high':
+        productsCopy.sort((a,b)=>(a.price - b.price));
+        break;
+      case 'high-low':
+        productsCopy.sort((a,b)=>(b.price - a.price));
+        break;
+      case 'new':
+        productsCopy.sort((a,b)=>(b.date - a.date));
+        break;
+      default:
+        break;
     }
 
     setFilterProducts(productsCopy)
 
-  }
-
-  const sortProduct = () => {
-
-    let fpCopy = filterProducts.slice();
-
-    switch (sortType) {
-      case 'low-high':
-        setFilterProducts(fpCopy.sort((a,b)=>(a.price - b.price)));
-        break;
-
-      case 'high-low':
-        setFilterProducts(fpCopy.sort((a,b)=>(b.price - a.price)));
-        break;
-
-      default:
-        applyFilter();
-        break;
-    }
-
-  }
-
-  useEffect(()=>{
-      applyFilter();
-  },[category,subCategory,search,showSearch,products])
-
-  useEffect(()=>{
-    sortProduct();
-  },[sortType])
+  },[category, bestsellerOnly, sizeFilter, sortType, search, showSearch, products])
 
   return (
-    <div className='flex flex-col sm:flex-row gap-1 sm:gap-10 pt-10 border-t'>
+    <div className='pt-10 border-t'>
 
-      {/* Filter Options */}
-      <div className='min-w-60 sm:sticky sm:top-4 sm:self-start'>
-        <p onClick={()=>setShowFilter(!showFilter)} className='my-2 text-xl flex items-center cursor-pointer gap-2'>
-          FILTERS
-          {activeFilterCount > 0 && (
-            <span className='bg-black text-white text-[10px] leading-none rounded-full w-4 h-4 flex items-center justify-center'>{activeFilterCount}</span>
-          )}
-          <ChevronDownIcon className={`h-3 w-3 sm:hidden transition-transform ${showFilter ? '-rotate-180' : ''}`} />
-        </p>
-        {/* Category Filter */}
-        <div className={`border border-gray-300 rounded px-4 py-3 mt-6 ${showFilter ? '' :'hidden'} sm:block`}>
-          <p className='mb-3 text-sm font-medium'>CATEGORIES</p>
-          <div className='flex flex-wrap gap-2'>
-            {CATEGORIES.map((cat)=>(
-              <FilterChip key={cat} label={cat} checked={category.includes(cat)} onChange={toggleCategory} />
-            ))}
-          </div>
-        </div>
-        {/* SubCategory Filter */}
-        <div className={`border border-gray-300 rounded px-4 py-3 my-5 ${showFilter ? '' :'hidden'} sm:block`}>
-          <p className='mb-3 text-sm font-medium'>TYPE</p>
-          <div className='flex flex-wrap gap-2'>
-            {TYPES.map((type)=>(
-              <FilterChip key={type} label={type} checked={subCategory.includes(type)} onChange={toggleSubCategory} />
-            ))}
-          </div>
-        </div>
-
-        {activeFilterCount > 0 && (
-          <button onClick={clearFilters} className={`text-xs text-gray-500 underline hover:text-black ${showFilter ? '' : 'hidden'} sm:block`}>
-            Clear all filters
-          </button>
-        )}
+      <div className='flex justify-between items-center text-base sm:text-2xl mb-2'>
+          <Title text1={category ? category.toUpperCase() : 'SHOP ALL'} text2={'PRODUCTS'} />
       </div>
 
-      {/* Right Side */}
-      <div className='flex-1'>
+      {category && (
+        <Link to='/collection' className='inline-flex items-center gap-1 text-xs text-gray-500 hover:text-black mb-4 border rounded-full px-3 py-1 w-fit'>
+          {category} <CloseIcon className='w-3 h-3' />
+        </Link>
+      )}
 
-        <div className='flex justify-between text-base sm:text-2xl mb-4'>
-            <Title text1={'ALL'} text2={'COLLECTIONS'} />
-            {/* Porduct Sort */}
-            <select onChange={(e)=>setSortType(e.target.value)} className='border-2 border-gray-300 text-sm px-2'>
-              <option value="relavent">Sort by: Relavent</option>
-              <option value="low-high">Sort by: Low to High</option>
-              <option value="high-low">Sort by: High to Low</option>
-            </select>
+      <div className='flex flex-wrap items-center justify-between gap-4 mb-6 py-3 border-y border-gray-200'>
+        <div className='flex items-center gap-3 flex-wrap'>
+          <span className='text-xs sm:text-sm text-gray-500'>Filter: Size</span>
+          {SIZES.map(size => (
+            <label key={size} className='cursor-pointer select-none'>
+              <input type='checkbox' className='peer sr-only' checked={sizeFilter.includes(size)} onChange={()=>toggleSize(size)} />
+              <span className='inline-block px-2.5 py-1 rounded border border-gray-300 text-xs text-gray-600 peer-checked:bg-black peer-checked:text-white peer-checked:border-black transition-colors'>{size}</span>
+            </label>
+          ))}
         </div>
 
-        {filterProducts.length === 0 && (
-          <p className='text-sm text-gray-400 py-10 text-center'>No posters match these filters yet.</p>
-        )}
-
-        {/* Map Products */}
-        <div className='grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 gap-y-6'>
-          {
-            filterProducts.map((item,index)=>(
-              <Reveal key={item._id} delay={(index % 8) * 40}>
-                <ProductItem name={item.name} id={item._id} price={item.price} image={item.image} category={item.category} />
-              </Reveal>
-            ))
-          }
-        </div>
+        <select onChange={(e)=>setSortType(e.target.value)} value={sortType} className='border border-gray-300 text-xs sm:text-sm px-2 py-1.5 rounded'>
+          <option value="relavent">Sort by: Relevant</option>
+          <option value="new">Sort by: New Arrivals</option>
+          <option value="low-high">Sort by: Low to High</option>
+          <option value="high-low">Sort by: High to Low</option>
+        </select>
       </div>
 
+      {filterProducts.length === 0 && (
+        <p className='text-sm text-gray-400 py-10 text-center'>No posters match these filters yet.</p>
+      )}
+
+      {/* Map Products */}
+      <div className='grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 gap-y-6'>
+        {
+          filterProducts.map((item,index)=>(
+            <Reveal key={item._id} delay={(index % 8) * 40}>
+              <ProductItem name={item.name} id={item._id} price={item.price} originalPrice={item.originalPrice} image={item.image} category={item.category} sizes={item.sizes} />
+            </Reveal>
+          ))
+        }
+      </div>
     </div>
   )
 }

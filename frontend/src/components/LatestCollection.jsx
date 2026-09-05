@@ -2,6 +2,7 @@ import React, { useContext, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ShopContext } from '../context/ShopContext'
 import ProductItem from './ProductItem';
+import Carousel from './Carousel';
 import Reveal from './Reveal';
 
 const LatestCollection = () => {
@@ -30,15 +31,17 @@ const LatestCollection = () => {
       </Reveal>
 
       {/* Rendering Products */}
-      <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 gap-y-6'>
+      <Carousel>
         {
           latestProducts.map((item,index)=>(
-            <Reveal key={item._id} delay={(index % 5) * 70}>
-              <ProductItem id={item._id} image={item.image} name={item.name} price={item.price} category={item.category} theme='dark' />
-            </Reveal>
+            <div key={item._id} className='w-[46%] sm:w-[31%] md:w-[23%] lg:w-[18.5%] shrink-0 snap-start'>
+              <Reveal delay={(index % 5) * 70}>
+                <ProductItem id={item._id} image={item.image} name={item.name} price={item.price} originalPrice={item.originalPrice} category={item.category} sizes={item.sizes} theme='dark' />
+              </Reveal>
+            </div>
           ))
         }
-      </div>
+      </Carousel>
     </div>
   )
 }

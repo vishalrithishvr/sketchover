@@ -16,10 +16,28 @@ const ShopContextProvider = (props) => {
     const [cartItems, setCartItems] = useState({});
     const [products, setProducts] = useState([]);
     const [token, setToken] = useState('')
+    const [wishlist, setWishlist] = useState(() => {
+        try {
+            return JSON.parse(localStorage.getItem('wishlist')) || []
+        } catch {
+            return []
+        }
+    })
     const navigate = useNavigate();
 
+    const [shippingAddress, setShippingAddress] = useState({})
+    const [couponCode, setCouponCode] = useState('')
 
-    const addToCart = async (itemId, size) => {
+    const toggleWishlist = (itemId) => {
+        setWishlist(prev => {
+            const next = prev.includes(itemId) ? prev.filter(id => id !== itemId) : [...prev, itemId]
+            localStorage.setItem('wishlist', JSON.stringify(next))
+            return next
+        })
+    }
+
+
+    const addToCart = async (itemId, size, qty = 1) => {
 
         if (!size) {
             toast.error('Select Product Size');
@@ -30,15 +48,15 @@ const ShopContextProvider = (props) => {
 
         if (cartData[itemId]) {
             if (cartData[itemId][size]) {
-                cartData[itemId][size] += 1;
+                cartData[itemId][size] += qty;
             }
             else {
-                cartData[itemId][size] = 1;
+                cartData[itemId][size] = qty;
             }
         }
         else {
             cartData[itemId] = {};
-            cartData[itemId][size] = 1;
+            cartData[itemId][size] = qty;
         }
         setCartItems(cartData);
 
@@ -159,7 +177,10 @@ const ShopContextProvider = (props) => {
         cartItems, addToCart,setCartItems,
         getCartCount, updateQuantity,
         getCartAmount, navigate, backendUrl,
-        setToken, token
+        setToken, token,
+        wishlist, toggleWishlist,
+        shippingAddress, setShippingAddress,
+        couponCode, setCouponCode
     }
 
     return (

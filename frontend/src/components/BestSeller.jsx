@@ -2,36 +2,41 @@ import React, { useContext, useEffect, useState } from 'react'
 import { ShopContext } from '../context/ShopContext'
 import Title from './Title';
 import ProductItem from './ProductItem';
+import Carousel from './Carousel';
 import Reveal from './Reveal';
 
 const BestSeller = () => {
 
     const {products} = useContext(ShopContext);
-    const [bestSeller,setBestSeller] = useState([]);
+    const [posterSets,setPosterSets] = useState([]);
 
     useEffect(()=>{
-        const bestProduct = products.filter((item)=>(item.bestseller));
-        setBestSeller(bestProduct.slice(0,5))
+        const sets = products.filter((item)=>(item.subCategory === 'Poster Set'));
+        setPosterSets(sets)
     },[products])
 
+    if (posterSets.length === 0) return null;
+
   return (
-    <div className='my-10'>
-      <div className='text-center text-3xl py-8'>
-        <Title text1={'BEST'} text2={'SELLERS'}/>
+    <div className='my-16'>
+      <div className='text-center text-3xl py-6'>
+        <Title text1={'COLLAGE'} text2={'POSTER KIT'}/>
         <p className='w-3/4 m-auto text-xs sm:text-sm md:text-base text-gray-600'>
-        Our most-loved prints, picked by fellow poster lovers.
+        Matching multi-panel sets, printed and shipped together.
         </p>
       </div>
 
-      <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 gap-y-6'>
+      <Carousel>
         {
-            bestSeller.map((item,index)=>(
-                <Reveal key={item._id} delay={(index % 5) * 70}>
-                  <ProductItem id={item._id} name={item.name} image={item.image} price={item.price} category={item.category} />
-                </Reveal>
+            posterSets.map((item,index)=>(
+                <div key={item._id} className='w-[70%] sm:w-[46%] md:w-[31%] lg:w-[23%] shrink-0 snap-start'>
+                  <Reveal delay={index * 80}>
+                    <ProductItem id={item._id} name={item.name} image={item.image} price={item.price} originalPrice={item.originalPrice} category={item.category} sizes={item.sizes} />
+                  </Reveal>
+                </div>
             ))
         }
-      </div>
+      </Carousel>
     </div>
   )
 }

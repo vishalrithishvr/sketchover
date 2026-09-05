@@ -33,3 +33,6 @@ lerna-debug.log*
 # Raw source poster photos (huge, unoptimized — the web-ready copies live in
 # frontend/src/assets/posters)
 /imAGE/
+
+# Local Claude Code tool config, not part of the project
+/.claude/

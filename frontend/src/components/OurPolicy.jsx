@@ -1,27 +1,32 @@
 import React from 'react'
-import { assets } from '../assets/assets'
 import Reveal from './Reveal'
+import { QualityIcon, DesignIcon, OfferIcon, DeliveryIcon } from './icons/NavIcons'
+import Title from './Title'
+
+const features = [
+  { Icon: QualityIcon, title: 'Quality', desc: '200 GSM premium matte prints' },
+  { Icon: DesignIcon, title: 'Custom Design', desc: 'Your photo, your poster' },
+  { Icon: OfferIcon, title: 'Exclusive Offers', desc: 'Combo & bulk order pricing' },
+  { Icon: DeliveryIcon, title: 'Free Delivery', desc: 'On orders above ₹399' },
+]
 
 const OurPolicy = () => {
   return (
-    <div className='flex flex-col sm:flex-row justify-around gap-12 sm:gap-2 text-center py-20 text-xs sm:text-sm md:text-base text-gray-700'>
-
-      <Reveal delay={0}>
-        <img src={assets.exchange_icon} className='w-12 m-auto mb-5' alt="" />
-        <p className=' font-semibold'>Damage-Free Guarantee</p>
-        <p className=' text-gray-400'>Free replacement if a poster arrives damaged</p>
-      </Reveal>
-      <Reveal delay={80}>
-        <img src={assets.quality_icon} className='w-12 m-auto mb-5' alt="" />
-        <p className=' font-semibold'>7 Days Return Policy</p>
-        <p className=' text-gray-400'>We provide 7 days free return policy</p>
-      </Reveal>
-      <Reveal delay={160}>
-        <img src={assets.quality_icon} className='w-12 m-auto mb-5' alt="" />
-        <p className=' font-semibold'>Best customer support</p>
-        <p className=' text-gray-400'>we provide 24/7 customer support</p>
-      </Reveal>
-
+    <div className='my-16 -mx-4 sm:mx-0'>
+      <div className='text-center py-6 text-3xl hidden sm:block'>
+        <Title text1={'WHY TO CHOOSE'} text2={'SKETCHOVER.IN?'} />
+      </div>
+      <div className='bg-black text-white grid grid-cols-2 sm:grid-cols-4 gap-6 sm:gap-4 px-6 sm:px-10 py-10'>
+        {features.map(({ Icon, title, desc }, i) => (
+          <Reveal key={title} delay={i * 70} className='flex flex-col items-center text-center gap-2'>
+            <div className='w-11 h-11 rounded-full bg-[#FF6B00] flex items-center justify-center'>
+              <Icon className='w-5 h-5 text-black' />
+            </div>
+            <p className='font-medium text-sm'>{title}</p>
+            <p className='text-white/50 text-xs hidden sm:block'>{desc}</p>
+          </Reveal>
+        ))}
+      </div>
     </div>
   )
 }
