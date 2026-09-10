@@ -2,13 +2,16 @@ import React, { useContext } from 'react'
 import { ShopContext } from '../context/ShopContext'
 import { Link } from 'react-router-dom'
 import { HeartIcon } from './icons/NavIcons'
+import { formatProductName } from '../assets/assets'
 
-const ProductItem = ({ id, image, name, price, originalPrice, category, sizes, theme = 'light' }) => {
+const ProductItem = ({ product, theme = 'light' }) => {
 
     const { currency, addToCart, wishlist, toggleWishlist } = useContext(ShopContext);
+    const { _id: id, image, name, price, originalPrice, category, subCategory, sizes } = product;
     const isDark = theme === 'dark';
     const isWishlisted = wishlist.includes(id);
     const hasDiscount = originalPrice && originalPrice > price;
+    const displayName = formatProductName(product);
 
     const quickAdd = (e) => {
         e.preventDefault();
@@ -33,7 +36,7 @@ const ProductItem = ({ id, image, name, price, originalPrice, category, sizes, t
         <img
           className='w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ease-out'
           src={image[0]}
-          alt={name}
+          alt={displayName}
           loading='lazy'
         />
         {hasDiscount && (
@@ -55,8 +58,9 @@ const ProductItem = ({ id, image, name, price, originalPrice, category, sizes, t
         )}
       </div>
       <div className='px-3 py-3'>
-        <p className={`text-sm truncate ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>{name}</p>
+        <p className={`text-sm truncate ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>{displayName}</p>
         <div className='flex items-center gap-2 mt-0.5'>
+          <span className='text-[10px] text-gray-400 uppercase tracking-wide'>From</span>
           {hasDiscount && <span className='text-xs text-gray-400 line-through'>{currency}{originalPrice}</span>}
           <span className={`text-sm font-medium ${isDark ? 'text-[#FF6B00]' : 'text-gray-900'}`}>{currency}{price}</span>
         </div>

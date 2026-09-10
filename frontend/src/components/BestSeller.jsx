@@ -11,7 +11,7 @@ const BestSeller = () => {
     const [posterSets,setPosterSets] = useState([]);
 
     useEffect(()=>{
-        const sets = products.filter((item)=>(item.subCategory === 'Poster Set'));
+        const sets = products.filter((item)=>(item.subCategory === 'Split'));
         setPosterSets(sets)
     },[products])
 
@@ -31,7 +31,7 @@ const BestSeller = () => {
             posterSets.map((item,index)=>(
                 <div key={item._id} className='w-[70%] sm:w-[46%] md:w-[31%] lg:w-[23%] shrink-0 snap-start'>
                   <Reveal delay={index * 80}>
-                    <ProductItem id={item._id} name={item.name} image={item.image} price={item.price} originalPrice={item.originalPrice} category={item.category} sizes={item.sizes} />
+                    <ProductItem product={item} />
                   </Reveal>
                 </div>
             ))

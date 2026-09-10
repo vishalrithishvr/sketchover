@@ -22,7 +22,7 @@ const LatestCollection = () => {
           <span className='inline-block text-[11px] tracking-[0.2em] uppercase border border-white/20 rounded-full px-3 py-1 text-white/70 mb-3'>
             Fresh Drops
           </span>
-          <h2 className='prata-regular text-2xl sm:text-3xl'>New Arrivals</h2>
+          <h2 className='heading-font text-2xl sm:text-3xl'>New Arrivals</h2>
           <p className='text-white/50 text-xs sm:text-sm mt-2 max-w-md'>Fresh off the press — our latest drops across cars, anime, movies and more.</p>
         </div>
         <Link to='/collection' className='text-xs sm:text-sm text-white/70 hover:text-[#FF6B00] transition-colors whitespace-nowrap'>
@@ -36,7 +36,7 @@ const LatestCollection = () => {
           latestProducts.map((item,index)=>(
             <div key={item._id} className='w-[46%] sm:w-[31%] md:w-[23%] lg:w-[18.5%] shrink-0 snap-start'>
               <Reveal delay={(index % 5) * 70}>
-                <ProductItem id={item._id} image={item.image} name={item.name} price={item.price} originalPrice={item.originalPrice} category={item.category} sizes={item.sizes} theme='dark' />
+                <ProductItem product={item} theme='dark' />
               </Reveal>
             </div>
           ))

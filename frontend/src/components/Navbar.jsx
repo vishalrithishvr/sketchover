@@ -42,8 +42,32 @@ const Navbar = () => {
             </div>
         </li>
         <NavLink to='/collection?sort=new' className={linkClass}><span>New Arrivals</span></NavLink>
-        <NavLink to='/custom-posters' className={linkClass}><span>Custom Posters</span></NavLink>
-        <NavLink to='/collection?category=TV Series' className={linkClass}><span>Vintage Prints</span></NavLink>
+
+        <li className='group relative'>
+            <NavLink to='/custom-posters' className={linkClass}>
+                <span>Custom Posters</span>
+                <ChevronDownIcon className='w-3 h-3' />
+            </NavLink>
+            <div className='hidden group-hover:block absolute left-1/2 -translate-x-1/2 pt-4 z-20'>
+                <div className='flex flex-col gap-2 w-52 py-4 px-5 bg-white text-gray-600 rounded shadow-lg border border-gray-100 normal-case'>
+                    <Link to='/custom-posters' className='hover:text-[#FF6B00]'>Personalization</Link>
+                    <Link to='/custom-posters' className='hover:text-[#FF6B00]'>Bulk / Event Orders</Link>
+                </div>
+            </div>
+        </li>
+
+        <li className='group relative'>
+            <NavLink to='/collection?category=TV Series' className={linkClass}>
+                <span>Vintage Prints</span>
+                <ChevronDownIcon className='w-3 h-3' />
+            </NavLink>
+            <div className='hidden group-hover:block absolute left-1/2 -translate-x-1/2 pt-4 z-20'>
+                <div className='flex flex-col gap-2 w-52 py-4 px-5 bg-white text-gray-600 rounded shadow-lg border border-gray-100 normal-case'>
+                    <Link to='/collection?category=TV Series' className='hover:text-[#FF6B00]'>TV &amp; Movie Classics</Link>
+                    <Link to='/collection?category=Autosport' className='hover:text-[#FF6B00]'>Retro Autosport</Link>
+                </div>
+            </div>
+        </li>
 
       </ul>
 

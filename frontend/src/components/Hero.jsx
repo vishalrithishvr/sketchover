@@ -11,7 +11,7 @@ const Hero = () => {
                     <p className='w-8 md:w-11 h-[2px] bg-[#FF6B00]'></p>
                     <p className=' font-medium text-sm md:text-base'>PREMIUM WALL ART</p>
                 </div>
-                <h1 className='prata-regular text-3xl sm:py-3 lg:text-5xl leading-relaxed'>Get Your Wall Talking</h1>
+                <h1 className='heading-font text-3xl sm:py-3 lg:text-5xl leading-relaxed'>Get Your Wall Talking</h1>
                 <p className='text-xs sm:text-sm text-gray-500 max-w-xs'>Movie, anime, car &amp; music posters printed on premium matte paper.</p>
                 <div className='flex items-center gap-2 mt-3'>
                     <p className='font-semibold text-sm md:text-base'>SHOP NOW</p>

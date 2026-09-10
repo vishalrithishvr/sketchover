@@ -1,16 +1,18 @@
 import React, { useContext, useState } from 'react'
 import { ShopContext } from '../context/ShopContext'
+import { getSizePrice, formatProductName } from '../assets/assets'
 
-const VALID_COUPONS = { SKO10: 10, SKO5: 5 }
+const VALID_COUPONS = { SKO10: 10, SKO5: 5, WELCOME5: 5 }
 
 const OrderSummary = ({ children, showCoupon = true, compact = false }) => {
-  const { products, cartItems, currency, getCartAmount, couponCode, setCouponCode } = useContext(ShopContext)
+  const { products, cartItems, currency, getCartAmount, getComboDiscount, couponCode, setCouponCode } = useContext(ShopContext)
   const [couponInput, setCouponInput] = useState(couponCode)
 
   const subtotal = getCartAmount()
+  const comboDiscount = getComboDiscount()
   const discountPct = VALID_COUPONS[couponCode.trim().toUpperCase()] || 0
-  const discountAmt = Math.round(subtotal * discountPct / 100)
-  const total = Math.max(0, subtotal - discountAmt)
+  const couponDiscount = Math.round((subtotal - comboDiscount) * discountPct / 100)
+  const total = Math.max(0, subtotal - comboDiscount - couponDiscount)
 
   const applyCoupon = (e) => {
     e.preventDefault()
@@ -34,16 +36,19 @@ const OrderSummary = ({ children, showCoupon = true, compact = false }) => {
 
       {!compact && lineItems.length > 0 && (
         <div className='flex flex-col gap-3 mb-4 max-h-64 overflow-y-auto pr-1'>
-          {lineItems.map(({ product, size, qty }) => (
-            <div key={product._id + size} className='flex items-center gap-3 text-xs sm:text-sm'>
-              <img src={product.image[0]} alt='' className='w-10 h-12 object-cover rounded shrink-0' />
-              <div className='flex-1 min-w-0'>
-                <p className='truncate'>{product.name}</p>
-                <p className='text-gray-400'>Size: {size} × {qty}</p>
+          {lineItems.map(({ product, size, qty }) => {
+            const { price } = getSizePrice(size, product.subCategory)
+            return (
+              <div key={product._id + size} className='flex items-center gap-3 text-xs sm:text-sm'>
+                <img src={product.image[0]} alt='' className='w-10 h-12 object-cover rounded shrink-0' />
+                <div className='flex-1 min-w-0'>
+                  <p className='truncate'>{formatProductName(product)}</p>
+                  <p className='text-gray-400'>Size: {size} × {qty}</p>
+                </div>
+                <p className='shrink-0'>{currency}{price * qty}</p>
               </div>
-              <p className='shrink-0'>{currency}{product.price * qty}</p>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
@@ -51,9 +56,15 @@ const OrderSummary = ({ children, showCoupon = true, compact = false }) => {
         <span className='text-gray-500'>Subtotal</span>
         <span>{currency}{subtotal}.00</span>
       </div>
+      {comboDiscount > 0 && (
+        <div className='flex justify-between text-sm py-1 text-green-600'>
+          <span>Combo Offer (Buy 4 Get 4 Free)</span>
+          <span>-{currency}{comboDiscount}</span>
+        </div>
+      )}
       {discountPct > 0 && (
         <div className='flex justify-between text-sm py-1 text-green-600'>
-          <span>Discount</span>
+          <span>Discount ({couponCode.trim().toUpperCase()})</span>
           <span>{discountPct}%</span>
         </div>
       )}

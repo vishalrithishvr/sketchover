@@ -1,6 +1,6 @@
 import React from 'react'
 
-const MarqueeBar = ({ text = 'Free Delivery from ₹399' }) => {
+const MarqueeBar = ({ text = 'Minimum Order ₹499 — Free Delivery' }) => {
   const items = new Array(8).fill(text)
 
   return (

@@ -15,7 +15,7 @@ const Add = ({token}) => {
    const [description, setDescription] = useState("");
    const [price, setPrice] = useState("");
    const [category, setCategory] = useState("Autosport");
-   const [subCategory, setSubCategory] = useState("Single Poster");
+   const [subCategory, setSubCategory] = useState("Single");
    const [bestseller, setBestseller] = useState(false);
    const [sizes, setSizes] = useState([]);
 
@@ -113,8 +113,8 @@ const Add = ({token}) => {
             <div>
               <p className='mb-2'>Sub category</p>
               <select onChange={(e) => setSubCategory(e.target.value)} className='w-full px-3 py-2'>
-                  <option value="Single Poster">Single Poster</option>
-                  <option value="Poster Set">Poster Set</option>
+                  <option value="Single">Single</option>
+                  <option value="Split">Split</option>
               </select>
             </div>
 
@@ -128,7 +128,7 @@ const Add = ({token}) => {
         <div>
           <p className='mb-2'>Poster Sizes</p>
           <div className='flex gap-3'>
-            {["A5", "A4", "A3", "A3+"].map((s) => (
+            {["A6", "A5", "A4", "A3", "A3+"].map((s) => (
               <div key={s} onClick={()=>setSizes(prev => prev.includes(s) ? prev.filter( item => item !== s) : [...prev,s])}>
                 <p className={`${sizes.includes(s) ? "bg-pink-100" : "bg-slate-200" } px-3 py-1 cursor-pointer`}>{s}</p>
               </div>

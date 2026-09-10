@@ -2,7 +2,7 @@ import { createContext, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import axios from 'axios'
-import { products as localProducts } from '../assets/assets'
+import { products as localProducts, getSizePrice } from '../assets/assets'
 
 export const ShopContext = createContext();
 
@@ -117,7 +117,8 @@ const ShopContextProvider = (props) => {
             for (const item in cartItems[items]) {
                 try {
                     if (cartItems[items][item] > 0) {
-                        totalAmount += itemInfo.price * cartItems[items][item];
+                        const { price } = getSizePrice(item, itemInfo.subCategory);
+                        totalAmount += price * cartItems[items][item];
                     }
                 } catch (error) {
 
@@ -125,6 +126,27 @@ const ShopContextProvider = (props) => {
             }
         }
         return totalAmount;
+    }
+
+    // "Buy 4 Get 4 Free" — applies to Single posters only, repeats every 8 units,
+    // and discounts the cheapest eligible units first (standard combo-promo behaviour).
+    const getComboDiscount = () => {
+        const unitPrices = [];
+        for (const itemId in cartItems) {
+            const itemInfo = products.find((product) => product._id === itemId);
+            if (!itemInfo || itemInfo.subCategory !== 'Single') continue;
+            for (const size in cartItems[itemId]) {
+                const qty = cartItems[itemId][size];
+                if (qty > 0) {
+                    const { price } = getSizePrice(size, itemInfo.subCategory);
+                    for (let i = 0; i < qty; i++) unitPrices.push(price);
+                }
+            }
+        }
+        if (unitPrices.length < 8) return 0;
+        unitPrices.sort((a, b) => a - b);
+        const freeCount = Math.floor(unitPrices.length / 8) * 4;
+        return unitPrices.slice(0, freeCount).reduce((sum, p) => sum + p, 0);
     }
 
     const getProductsData = async () => {
@@ -176,7 +198,7 @@ const ShopContextProvider = (props) => {
         search, setSearch, showSearch, setShowSearch,
         cartItems, addToCart,setCartItems,
         getCartCount, updateQuantity,
-        getCartAmount, navigate, backendUrl,
+        getCartAmount, getComboDiscount, navigate, backendUrl,
         setToken, token,
         wishlist, toggleWishlist,
         shippingAddress, setShippingAddress,

@@ -1,6 +1,7 @@
 import React, { useContext, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ShopContext } from '../context/ShopContext'
+import { MIN_ORDER_VALUE } from '../assets/assets'
 import Title from '../components/Title'
 import CheckoutSteps from '../components/CheckoutSteps'
 import OrderSummary from '../components/OrderSummary'
@@ -38,13 +39,13 @@ const Shipping = () => {
     navigate('/place-order')
   }
 
-  const cartIsEmpty = getCartAmount() === 0;
+  const blocked = getCartAmount() < MIN_ORDER_VALUE;
 
   useEffect(() => {
-    if (cartIsEmpty) navigate('/cart')
-  }, [cartIsEmpty])
+    if (blocked) navigate('/cart')
+  }, [blocked])
 
-  if (cartIsEmpty) return null
+  if (blocked) return null
 
   return (
     <div className='border-t pt-6'>

@@ -1,6 +1,7 @@
 import React, { useContext, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ShopContext } from '../context/ShopContext'
+import { getSizePrice, formatProductName } from '../assets/assets'
 import Title from '../components/Title'
 import { HeartIcon } from '../components/icons/NavIcons'
 
@@ -8,6 +9,7 @@ const FavoriteRow = ({ product }) => {
     const { currency, addToCart, toggleWishlist } = useContext(ShopContext)
     const [size, setSize] = useState('')
     const [choosing, setChoosing] = useState(false)
+    const { price, originalPrice } = getSizePrice(size || product.sizes[0], product.subCategory)
 
     const onAddToBag = () => {
         if (!size) { setChoosing(true); return }
@@ -17,10 +19,10 @@ const FavoriteRow = ({ product }) => {
     return (
         <div className='flex gap-4 py-5 border-b'>
             <Link to={`/product/${product._id}`}>
-                <img src={product.image[0]} alt={product.name} className='w-20 h-24 sm:w-24 sm:h-28 object-cover rounded' />
+                <img src={product.image[0]} alt={formatProductName(product)} className='w-20 h-24 sm:w-24 sm:h-28 object-cover rounded' />
             </Link>
             <div className='flex-1 min-w-0'>
-                <Link to={`/product/${product._id}`} className='font-medium text-sm sm:text-base hover:text-[#FF6B00]'>{product.name}</Link>
+                <Link to={`/product/${product._id}`} className='font-medium text-sm sm:text-base hover:text-[#FF6B00]'>{formatProductName(product)}</Link>
 
                 {choosing && (
                     <div className='flex gap-2 mt-2'>
@@ -35,8 +37,8 @@ const FavoriteRow = ({ product }) => {
                         {choosing && !size ? 'Pick a size' : 'Add to bag'}
                     </button>
                     <button onClick={()=>toggleWishlist(product._id)} className='text-xs text-gray-500 hover:text-black underline'>Remove</button>
-                    <span className='text-xs text-gray-400 line-through'>{product.originalPrice ? `${currency}${product.originalPrice}` : ''}</span>
-                    <span className='text-sm font-medium'>{currency}{product.price}</span>
+                    {originalPrice > price && <span className='text-xs text-gray-400 line-through'>{currency}{originalPrice}</span>}
+                    <span className='text-sm font-medium'>{currency}{price}</span>
                 </div>
             </div>
         </div>

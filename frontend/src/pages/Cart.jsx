@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ShopContext } from '../context/ShopContext'
 import Title from '../components/Title';
-import { assets } from '../assets/assets';
+import { assets, getSizePrice, formatProductName, MIN_ORDER_VALUE } from '../assets/assets';
 import CheckoutSteps from '../components/CheckoutSteps';
 import OrderSummary from '../components/OrderSummary';
 import ProductItem from '../components/ProductItem';
@@ -10,7 +10,7 @@ import { PlusIcon, MinusIcon } from '../components/icons/NavIcons';
 
 const Cart = () => {
 
-  const { products, currency, cartItems, updateQuantity, navigate } = useContext(ShopContext);
+  const { products, currency, cartItems, updateQuantity, navigate, getCartAmount } = useContext(ShopContext);
   const [agreed, setAgreed] = useState(false);
   const [cartData, setCartData] = useState([]);
 
@@ -34,6 +34,8 @@ const Cart = () => {
   }, [cartItems, products])
 
   const suggestions = products.filter(p => !cartData.some(c => c._id === p._id)).slice(0, 4);
+  const subtotal = getCartAmount();
+  const belowMinimum = subtotal > 0 && subtotal < MIN_ORDER_VALUE;
 
   return (
     <div className='border-t pt-6'>
@@ -57,12 +59,13 @@ const Cart = () => {
 
               const productData = products.find((product) => product._id === item._id);
               if (!productData) return null;
+              const { price } = getSizePrice(item.size, productData.subCategory);
 
               return (
                 <div key={index} className='py-4 border-b text-gray-700 flex items-center gap-4'>
                   <img className='w-16 sm:w-20 rounded' src={productData.image[0]} alt="" />
                   <div className='flex-1 min-w-0'>
-                    <p className='text-xs sm:text-base font-medium truncate'>{productData.name}</p>
+                    <p className='text-xs sm:text-base font-medium truncate'>{formatProductName(productData)}</p>
                     <p className='text-xs text-gray-400 mt-1'>Size: {item.size}</p>
                     <div className='flex items-center gap-4 mt-2'>
                       <div className='flex items-center border rounded'>
@@ -74,7 +77,7 @@ const Cart = () => {
                           <PlusIcon className='w-3 h-3' />
                         </button>
                       </div>
-                      <p className='text-sm font-medium'>{currency}{productData.price * item.quantity}</p>
+                      <p className='text-sm font-medium'>{currency}{price * item.quantity}</p>
                     </div>
                   </div>
                   <button onClick={() => updateQuantity(item._id, item.size, 0)} aria-label='Remove'>
@@ -89,12 +92,17 @@ const Cart = () => {
 
         <div>
           <OrderSummary>
+            {belowMinimum && (
+              <p className='text-xs text-[#FF6B00] bg-orange-50 border border-orange-200 rounded px-3 py-2 mt-4'>
+                Add {currency}{MIN_ORDER_VALUE - subtotal} more to reach the {currency}{MIN_ORDER_VALUE} minimum order — only orders of {currency}{MIN_ORDER_VALUE}+ can be placed.
+              </p>
+            )}
             <label className='flex items-start gap-2 text-xs text-gray-500 mt-4'>
               <input type='checkbox' checked={agreed} onChange={()=>setAgreed(a=>!a)} className='mt-0.5' />
               I have read and agree to the website terms and conditions*
             </label>
             <button
-              disabled={!agreed}
+              disabled={!agreed || belowMinimum}
               onClick={() => navigate('/shipping')}
               className='w-full bg-black text-white text-sm mt-4 py-3 rounded hover:bg-[#FF6B00] transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-black'
             >
@@ -112,7 +120,7 @@ const Cart = () => {
           </div>
           <div className='grid grid-cols-2 sm:grid-cols-4 gap-4'>
             {suggestions.map(p => (
-              <ProductItem key={p._id} id={p._id} name={p.name} price={p.price} originalPrice={p.originalPrice} image={p.image} category={p.category} sizes={p.sizes} />
+              <ProductItem key={p._id} product={p} />
             ))}
           </div>
         </div>

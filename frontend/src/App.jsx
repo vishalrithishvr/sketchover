@@ -16,6 +16,7 @@ import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import MarqueeBar from './components/MarqueeBar'
 import SearchBar from './components/SearchBar'
+import WhatsappFloat from './components/WhatsappFloat'
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Verify from './pages/Verify'
@@ -45,6 +46,7 @@ const App = () => {
         </Routes>
       </div>
       <Footer />
+      <WhatsappFloat />
     </div>
   )
 }

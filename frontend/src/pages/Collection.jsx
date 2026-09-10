@@ -1,12 +1,11 @@
 import React, { useContext, useEffect, useState } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { ShopContext } from '../context/ShopContext'
+import { SIZES } from '../assets/assets'
 import Title from '../components/Title';
 import ProductItem from '../components/ProductItem';
 import Reveal from '../components/Reveal';
 import { CloseIcon } from '../components/icons/NavIcons';
-
-const SIZES = ['A5', 'A4', 'A3', 'A3+']
 
 const Collection = () => {
 
@@ -14,6 +13,7 @@ const Collection = () => {
   const [searchParams] = useSearchParams();
   const [filterProducts,setFilterProducts] = useState([]);
   const [sizeFilter,setSizeFilter] = useState([]);
+  const [splitsOnly,setSplitsOnly] = useState(false);
   const [sortType,setSortType] = useState(()=> searchParams.get('sort') === 'new' ? 'new' : 'relavent')
   const category = searchParams.get('category');
   const bestsellerOnly = searchParams.get('bestseller') === 'true';
@@ -38,6 +38,10 @@ const Collection = () => {
       productsCopy = productsCopy.filter(item => item.bestseller);
     }
 
+    if (splitsOnly) {
+      productsCopy = productsCopy.filter(item => item.subCategory === 'Split');
+    }
+
     if (sizeFilter.length > 0) {
       productsCopy = productsCopy.filter(item => item.sizes.some(s => sizeFilter.includes(s)));
     }
@@ -52,13 +56,16 @@ const Collection = () => {
       case 'new':
         productsCopy.sort((a,b)=>(b.date - a.date));
         break;
+      case 'popularity':
+        productsCopy.sort((a,b)=>(Number(b.bestseller) - Number(a.bestseller)) || (b.date - a.date));
+        break;
       default:
         break;
     }
 
     setFilterProducts(productsCopy)
 
-  },[category, bestsellerOnly, sizeFilter, sortType, search, showSearch, products])
+  },[category, bestsellerOnly, splitsOnly, sizeFilter, sortType, search, showSearch, products])
 
   return (
     <div className='pt-10 border-t'>
@@ -82,13 +89,21 @@ const Collection = () => {
               <span className='inline-block px-2.5 py-1 rounded border border-gray-300 text-xs text-gray-600 peer-checked:bg-black peer-checked:text-white peer-checked:border-black transition-colors'>{size}</span>
             </label>
           ))}
+
+          <span className='w-px h-4 bg-gray-200 mx-1'></span>
+
+          <label className='cursor-pointer select-none'>
+            <input type='checkbox' className='peer sr-only' checked={splitsOnly} onChange={()=>setSplitsOnly(v=>!v)} />
+            <span className='inline-block px-2.5 py-1 rounded border border-gray-300 text-xs text-gray-600 peer-checked:bg-black peer-checked:text-white peer-checked:border-black transition-colors'>Splits</span>
+          </label>
         </div>
 
         <select onChange={(e)=>setSortType(e.target.value)} value={sortType} className='border border-gray-300 text-xs sm:text-sm px-2 py-1.5 rounded'>
           <option value="relavent">Sort by: Relevant</option>
-          <option value="new">Sort by: New Arrivals</option>
-          <option value="low-high">Sort by: Low to High</option>
-          <option value="high-low">Sort by: High to Low</option>
+          <option value="popularity">Sort by: Popularity</option>
+          <option value="new">Sort by: Latest</option>
+          <option value="low-high">Sort by: Price Low to High</option>
+          <option value="high-low">Sort by: Price High to Low</option>
         </select>
       </div>
 
@@ -101,7 +116,7 @@ const Collection = () => {
         {
           filterProducts.map((item,index)=>(
             <Reveal key={item._id} delay={(index % 8) * 40}>
-              <ProductItem name={item.name} id={item._id} price={item.price} originalPrice={item.originalPrice} image={item.image} category={item.category} sizes={item.sizes} />
+              <ProductItem product={item} />
             </Reveal>
           ))
         }

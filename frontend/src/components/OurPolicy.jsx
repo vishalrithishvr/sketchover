@@ -7,7 +7,7 @@ const features = [
   { Icon: QualityIcon, title: 'Quality', desc: '200 GSM premium matte prints' },
   { Icon: DesignIcon, title: 'Custom Design', desc: 'Your photo, your poster' },
   { Icon: OfferIcon, title: 'Exclusive Offers', desc: 'Combo & bulk order pricing' },
-  { Icon: DeliveryIcon, title: 'Free Delivery', desc: 'On orders above ₹399' },
+  { Icon: DeliveryIcon, title: 'Free Delivery', desc: 'On every order (min. ₹499)' },
 ]
 
 const OurPolicy = () => {

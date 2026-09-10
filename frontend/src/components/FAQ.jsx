@@ -2,9 +2,10 @@ import React, { useState } from 'react'
 import Title from './Title'
 import Reveal from './Reveal'
 import { PlusIcon, MinusIcon } from './icons/NavIcons'
+import { SIZES } from '../assets/assets'
 
 const faqs = [
-  { q: 'What sizes of posters are available?', a: 'Every poster ships in A5, A4, A3 or A3+ — pick the size that fits your wall on the product page.' },
+  { q: 'What sizes of posters are available?', a: `Every poster ships in ${SIZES.join(', ')} — pick the size that fits your wall on the product page. Each size has its own price.` },
   { q: 'Are the posters framed?', a: 'Posters ship unframed, rolled in a rigid tube to arrive flat and crease-free. Frames are not included.' },
   { q: 'How long does it take to deliver?', a: 'Most orders are printed and dispatched within 2-3 business days, with delivery typically taking 4-7 days depending on your location.' },
   { q: 'Can I customize posters for events?', a: 'Yes — head to Custom Posters or message us on WhatsApp with your design/photo and we\'ll quote bulk or event pricing.' },
@@ -27,7 +28,7 @@ const FAQ = () => {
     <div className='my-16 grid grid-cols-1 md:grid-cols-2 gap-10 items-center'>
       <Reveal className='hidden md:block'>
         <div className='bg-neutral-950 rounded-2xl aspect-[4/3] flex items-center justify-center'>
-          <span className='prata-regular text-white/20 text-4xl'>FAQ</span>
+          <span className='heading-font text-white/20 text-4xl'>FAQ</span>
         </div>
       </Reveal>
       <Reveal>

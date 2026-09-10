@@ -4,6 +4,7 @@ import Title from '../components/Title'
 import CheckoutSteps from '../components/CheckoutSteps'
 import OrderSummary from '../components/OrderSummary'
 import { ShopContext } from '../context/ShopContext'
+import { getSizePrice, formatProductName, MIN_ORDER_VALUE } from '../assets/assets'
 import { WhatsappIcon } from '../components/icons/NavIcons'
 
 // TODO: replace with Sketchover's real WhatsApp Business number (country code + number, no symbols)
@@ -11,16 +12,17 @@ const WHATSAPP_NUMBER = '910000000000'
 
 const PlaceOrder = () => {
 
-    const { products, cartItems, currency, getCartAmount, shippingAddress, setCartItems } = useContext(ShopContext)
+    const { products, cartItems, currency, getCartAmount, getComboDiscount, couponCode, shippingAddress, setCartItems } = useContext(ShopContext)
     const navigate = useNavigate()
 
-    const cartIsEmpty = getCartAmount() === 0;
+    const subtotal = getCartAmount();
+    const blocked = subtotal === 0 || subtotal < MIN_ORDER_VALUE;
 
     useEffect(() => {
-        if (cartIsEmpty) navigate('/cart')
-    }, [cartIsEmpty])
+        if (blocked) navigate('/cart')
+    }, [blocked])
 
-    if (cartIsEmpty) return null
+    if (blocked) return null
 
     const buildWhatsappMessage = () => {
         const lines = ['Hi Sketchover! I would like to place this order:', ''];
@@ -30,12 +32,21 @@ const PlaceOrder = () => {
             if (!product) continue
             for (const size in cartItems[itemId]) {
                 if (cartItems[itemId][size] > 0) {
-                    lines.push(`• ${product.name} (Size ${size}) x${cartItems[itemId][size]} — ${currency}${product.price * cartItems[itemId][size]}`)
+                    const { price } = getSizePrice(size, product.subCategory)
+                    lines.push(`• ${formatProductName(product)} (Size ${size}) x${cartItems[itemId][size]} — ${currency}${price * cartItems[itemId][size]}`)
                 }
             }
         }
 
-        lines.push('', `Total: ${currency}${getCartAmount()}`, '')
+        const comboDiscount = getComboDiscount();
+        const couponPct = { SKO10: 10, SKO5: 5, WELCOME5: 5 }[couponCode.trim().toUpperCase()] || 0;
+        const couponDiscount = Math.round((subtotal - comboDiscount) * couponPct / 100);
+        const total = Math.max(0, subtotal - comboDiscount - couponDiscount);
+
+        lines.push('', `Subtotal: ${currency}${subtotal}`)
+        if (comboDiscount > 0) lines.push(`Combo Offer (Buy 4 Get 4 Free): -${currency}${comboDiscount}`)
+        if (couponPct > 0) lines.push(`Discount (${couponCode.trim().toUpperCase()}): ${couponPct}%`)
+        lines.push(`Total: ${currency}${total}`, '')
 
         if (shippingAddress?.firstName) {
             lines.push('Shipping to:')

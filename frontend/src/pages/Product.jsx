@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { ShopContext } from '../context/ShopContext';
-import { assets } from '../assets/assets';
+import { assets, getSizePrice, formatProductName, SIZES } from '../assets/assets';
 import RelatedProducts from '../components/RelatedProducts';
 import { HeartIcon, PlusIcon, MinusIcon } from '../components/icons/NavIcons';
 
@@ -21,6 +21,7 @@ const Product = () => {
       if (item._id === productId) {
         setProductData(item)
         setImage(item.image[0])
+        setSize(item.sizes[0])
         return null;
       }
     })
@@ -30,13 +31,13 @@ const Product = () => {
   useEffect(() => {
     fetchProductData();
     setQuantity(1);
-    setSize('');
   }, [productId,products])
 
   if (!productData) return <div className='opacity-0'></div>
 
   const isWishlisted = wishlist.includes(productData._id);
-  const hasDiscount = productData.originalPrice && productData.originalPrice > productData.price;
+  const { price, originalPrice } = getSizePrice(size || productData.sizes[0], productData.subCategory);
+  const hasDiscount = originalPrice > price;
 
   return (
     <div className='border-t-2 pt-10 transition-opacity ease-in duration-500 opacity-100'>
@@ -69,7 +70,7 @@ const Product = () => {
 
         {/* -------- Product Info ---------- */}
         <div className='flex-1'>
-          <h1 className='font-medium text-2xl mt-2'>{productData.name}</h1>
+          <h1 className='font-medium text-2xl mt-2'>{formatProductName(productData)}</h1>
           <div className=' flex items-center gap-1 mt-2'>
               <img src={assets.star_icon} alt="" className="w-3 5" />
               <img src={assets.star_icon} alt="" className="w-3 5" />
@@ -79,8 +80,8 @@ const Product = () => {
               <p className='pl-2'>(122)</p>
           </div>
           <div className='flex items-center gap-3 mt-5'>
-            {hasDiscount && <p className='text-lg text-gray-400 line-through'>{currency}{productData.originalPrice}</p>}
-            <p className='text-3xl font-medium'>{currency}{productData.price}</p>
+            {hasDiscount && <p className='text-lg text-gray-400 line-through'>{currency}{originalPrice}</p>}
+            <p className='text-3xl font-medium'>{currency}{price}</p>
           </div>
           <p className='mt-5 text-gray-500 md:w-4/5'>{productData.description}</p>
           <div className='flex flex-col gap-4 my-8'>
@@ -124,12 +125,12 @@ const Product = () => {
           {openTab === 'description' ? (
             <>
               <p>Printed on premium 200 GSM matte paper for true-to-design colour and a glare-free finish. Every poster ships rolled in a rigid tube to arrive flat and crease-free.</p>
-              <p>Available in A5, A4, A3 and A3+ — pick the size that fits your wall. Frame not included.</p>
+              <p>Available in {SIZES.join(', ')} — pick the size that fits your wall. Frame not included.</p>
             </>
           ) : (
             <>
               <p>Every order is rolled (never folded) and shipped in a rigid cardboard tube so it arrives flat and crease-free.</p>
-              <p>Orders are printed and dispatched within 2-3 business days. Delivery typically takes 4-7 days depending on your location — free on orders above ₹399.</p>
+              <p>Orders are printed and dispatched within 2-3 business days. Delivery typically takes 4-7 days depending on your location — free on all orders (minimum order value ₹499).</p>
             </>
           )}
         </div>

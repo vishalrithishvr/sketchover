@@ -11,7 +11,7 @@ const Logo = ({ className = '', variant = 'dark' }) => {
         <path d='M8 21 L16 9 L24 21' stroke='#FF6B00' strokeWidth='2.5' fill='none' strokeLinecap='round' strokeLinejoin='round' />
         <circle cx='16' cy='16' r='2' fill='#FF6B00' />
       </svg>
-      <span className={`prata-regular text-xl sm:text-2xl tracking-wide whitespace-nowrap ${isLight ? 'text-white' : 'text-[#171717]'}`}>
+      <span className={`heading-font text-xl sm:text-2xl tracking-wide whitespace-nowrap ${isLight ? 'text-white' : 'text-[#171717]'}`}>
         Sketch<span className='text-[#FF6B00]'>Over</span>
       </span>
     </Link>

@@ -34,7 +34,7 @@ const RelatedProducts = ({category,subCategory}) => {
       <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 gap-y-6'>
         {related.map((item,index)=>(
             <Reveal key={item._id} delay={(index % 5) * 60}>
-              <ProductItem id={item._id} name={item.name} price={item.price} originalPrice={item.originalPrice} image={item.image} category={item.category} sizes={item.sizes} />
+              <ProductItem product={item} />
             </Reveal>
         ))}
       </div>
