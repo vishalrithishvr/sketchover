@@ -7,8 +7,7 @@ import { ShopContext } from '../context/ShopContext'
 import { getSizePrice, formatProductName, MIN_ORDER_VALUE } from '../assets/assets'
 import { WhatsappIcon } from '../components/icons/NavIcons'
 
-// TODO: replace with Sketchover's real WhatsApp Business number (country code + number, no symbols)
-const WHATSAPP_NUMBER = '910000000000'
+const WHATSAPP_NUMBER = '918870333236'
 
 const PlaceOrder = () => {
 

@@ -1,8 +1,7 @@
 import React from 'react'
 import { WhatsappIcon } from './icons/NavIcons'
 
-// TODO: replace with Sketchover's real WhatsApp Business number (country code + number, no symbols)
-const WHATSAPP_NUMBER = '910000000000'
+const WHATSAPP_NUMBER = '918870333236'
 
 const WhatsappFloat = () => {
   return (
