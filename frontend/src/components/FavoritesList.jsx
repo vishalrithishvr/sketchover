@@ -33,7 +33,7 @@ const FavoriteRow = ({ product }) => {
                                 <button
                                     key={s}
                                     onClick={()=>setSize(s)}
-                                    className={`text-xs px-3 py-1.5 transition-colors ${size === s ? 'bg-black text-white' : 'bg-gray-100 hover:bg-gray-200'}`}
+                                    className={`text-xs px-3 py-1.5 border transition-colors ${size === s ? 'bg-gray-500 border-gray-500 text-white' : 'bg-transparent border-gray-300 text-black hover:border-gray-500'}`}
                                 >
                                     {s}
                                 </button>

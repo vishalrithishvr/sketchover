@@ -106,7 +106,7 @@ const Product = () => {
               <button
                 key={item}
                 onClick={()=>setSize(item)}
-                className={`min-w-[56px] py-2 px-4 text-sm transition-colors ${item === size ? 'bg-black text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                className={`min-w-[56px] py-2 px-4 text-sm border transition-colors ${item === size ? 'bg-gray-500 border-gray-500 text-white' : 'bg-transparent border-gray-300 text-black hover:border-gray-500'}`}
               >
                 {item}
               </button>

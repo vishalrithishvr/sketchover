@@ -14,7 +14,7 @@ const PersonalizationBanner = () => {
 
       <Reveal className='mt-6'>
         <Link
-          to='/custom-posters'
+          to='/product/sk100'
           className='group relative block overflow-hidden bg-neutral-950 text-white min-h-[170px] sm:min-h-[230px]'
         >
           {/* faded poster strip */}
@@ -33,7 +33,7 @@ const PersonalizationBanner = () => {
               Upload any photo or artwork — we print it on premium matte paper in A4 or A3.
             </p>
             <span className='inline-block mt-2 bg-brand group-hover:bg-white group-hover:text-black text-white text-xs sm:text-sm px-7 py-2.5 transition-colors'>
-              Start a Custom Order
+              Upload Image
             </span>
           </div>
         </Link>

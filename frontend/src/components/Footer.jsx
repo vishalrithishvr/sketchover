@@ -60,7 +60,16 @@ const Footer = () => {
         <p className='text-xs text-center text-gray-500'>© 2026 Sketchover.in #SKOTRIBE</p>
       </div>
 
-      <p className='select-none text-center font-black uppercase leading-none text-white/95 text-[16vw] sm:text-[10vw] tracking-tight py-2 overflow-hidden'>
+      {/* Gradient finish: white 0% -> #DEDEDE 21% -> black 86% */}
+      <p
+        className='select-none text-center font-black uppercase leading-none text-[16vw] sm:text-[10vw] tracking-tight py-2 overflow-hidden'
+        style={{
+          backgroundImage: 'linear-gradient(180deg, #FFFFFF 0%, #DEDEDE 21%, #000000 86%)',
+          WebkitBackgroundClip: 'text',
+          backgroundClip: 'text',
+          color: 'transparent',
+        }}
+      >
         #SKOTRIBE
       </p>
     </div>
