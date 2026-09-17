@@ -1,16 +1,18 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import logoSko from '../assets/logo-sko.png'
+import logoOnLight from '../assets/logo-sko.png'
+import logoOnDark from '../assets/logo-sko-light.png'
 
+// `variant='light'` = the artwork drawn for dark backgrounds (footer).
 const Logo = ({ className = '', variant = 'dark' }) => {
-  const isLight = variant === 'light';
+  const onDark = variant === 'light'
 
   return (
     <Link to='/' className={`flex items-center shrink-0 ${className}`}>
       <img
-        src={logoSko}
+        src={onDark ? logoOnDark : logoOnLight}
         alt='Sketchover'
-        className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full object-cover ${isLight ? 'ring-1 ring-white/25' : ''}`}
+        className='h-10 sm:h-11 w-auto object-contain'
       />
     </Link>
   )
