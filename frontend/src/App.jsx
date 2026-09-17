@@ -15,7 +15,6 @@ import CustomPosters from './pages/CustomPosters'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import MarqueeBar from './components/MarqueeBar'
-import SearchBar from './components/SearchBar'
 import WhatsappFloat from './components/WhatsappFloat'
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -28,7 +27,6 @@ const App = () => {
       <MarqueeBar />
       <div className='px-4 sm:px-[5vw] md:px-[7vw] lg:px-[9vw]'>
         <Navbar />
-        <SearchBar />
         <Routes>
           <Route path='/' element={<Home />} />
           <Route path='/collection' element={<Collection />} />

@@ -1,41 +1,92 @@
-import React from 'react'
+import React, { useContext, useMemo, useState } from 'react'
+import { ShopContext } from '../context/ShopContext'
+import { CUSTOM_SIZES } from '../assets/assets'
 import Title from '../components/Title'
-import { assets, SIZES } from '../assets/assets'
+import PageBanner from '../components/PageBanner'
+import ProductItem from '../components/ProductItem'
+import Pagination from '../components/Pagination'
+import CustomerReviews from '../components/CustomerReviews'
 import NewsletterBox from '../components/NewsletterBox'
+import Reveal from '../components/Reveal'
 
-const steps = [
-    { title: '1. Send your design', desc: 'DM us on Instagram or email your photo, artwork, or event design.' },
-    { title: '2. We quote & confirm', desc: 'We\'ll confirm size, paper finish and price — single prints or bulk orders.' },
-    { title: '3. Printed & shipped', desc: 'Your custom poster is printed on premium matte paper and shipped rolled.' },
-]
+const PER_PAGE = 8
 
 const CustomPosters = () => {
+  const { products } = useContext(ShopContext)
+  const [sizeFilter, setSizeFilter] = useState('')
+  const [sortType, setSortType] = useState('relavent')
+  const [page, setPage] = useState(1)
+
+  // The custom product plus anything else offered as personalised work.
+  const items = useMemo(() => {
+    let list = products.filter(p => p.isCustom || p.category === 'Custom')
+
+    // Nothing custom in the catalogue yet? show the split sets as the closest thing.
+    if (list.length === 0) list = products.filter(p => p.subCategory === 'Split')
+
+    if (sizeFilter) list = list.filter(p => p.sizes.includes(sizeFilter))
+
+    const sorted = list.slice()
+    if (sortType === 'low-high') sorted.sort((a, b) => a.price - b.price)
+    if (sortType === 'high-low') sorted.sort((a, b) => b.price - a.price)
+    if (sortType === 'new') sorted.sort((a, b) => b.date - a.date)
+    return sorted
+  }, [products, sizeFilter, sortType])
+
+  const pageCount = Math.max(1, Math.ceil(items.length / PER_PAGE))
+  const visible = items.slice((page - 1) * PER_PAGE, page * PER_PAGE)
+
   return (
     <div>
-      <div className='text-2xl text-center pt-8 border-t'>
-          <Title text1={'CUSTOM'} text2={'POSTERS'} />
+      <PageBanner
+        title='Custom Posters'
+        subtitle='Upload your own photo or artwork — printed in A4 or A3'
+        starburst
+      />
+
+      <div className='text-center text-xl sm:text-2xl mt-10 mb-6'>
+        <Title text1={'CUSTOM POSTERS'} />
       </div>
 
-      <div className='my-10 flex flex-col md:flex-row gap-16 items-center'>
-          <img className='w-full md:max-w-[450px] rounded-lg' src={assets.aboutImage} alt="Custom posters" />
-          <div className='flex flex-col justify-center gap-6 md:w-2/4 text-gray-600'>
-              <p>Got a photo, a logo, or an event you want on a wall? We print custom posters from your own design — perfect for gifts, birthdays, business branding, or wedding décor.</p>
-              <p>Available in {SIZES.join(', ')}, on the same premium matte paper as the rest of our catalogue. Bulk and event pricing available on request.</p>
-              <a href='mailto:sketchoverfactory@gmail.com' className='w-fit bg-black text-white px-8 py-3 text-sm rounded hover:bg-[#FF6B00] transition-colors'>
-                Email Your Design
-              </a>
-          </div>
+      <div className='flex items-center justify-between gap-4 flex-wrap text-xs sm:text-sm mb-8'>
+        <div className='flex items-center gap-3'>
+          <span className='text-gray-500'>Filter:</span>
+          <select
+            value={sizeFilter}
+            onChange={(e)=>setSizeFilter(e.target.value)}
+            className='border border-gray-300 px-3 py-1.5 outline-none focus:border-black'
+          >
+            <option value=''>Size</option>
+            {CUSTOM_SIZES.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+
+        <div className='flex items-center gap-3'>
+          <span className='text-gray-500'>Sort by:</span>
+          <select
+            value={sortType}
+            onChange={(e)=>setSortType(e.target.value)}
+            className='border border-gray-300 px-3 py-1.5 outline-none focus:border-black'
+          >
+            <option value='relavent'>Relevant</option>
+            <option value='new'>Latest</option>
+            <option value='low-high'>Price: Low to High</option>
+            <option value='high-low'>Price: High to Low</option>
+          </select>
+        </div>
       </div>
 
-      <div className='grid grid-cols-1 sm:grid-cols-3 gap-6 my-16'>
-        {steps.map(s => (
-          <div key={s.title} className='border rounded-lg p-6'>
-            <p className='font-medium mb-2'>{s.title}</p>
-            <p className='text-sm text-gray-500'>{s.desc}</p>
-          </div>
+      <div className='grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-8'>
+        {visible.map((item, index) => (
+          <Reveal key={item._id} delay={(index % 8) * 40}>
+            <ProductItem product={item} />
+          </Reveal>
         ))}
       </div>
 
+      <Pagination page={page} pageCount={pageCount} onChange={setPage} className='mt-12' />
+
+      <CustomerReviews />
       <NewsletterBox />
     </div>
   )

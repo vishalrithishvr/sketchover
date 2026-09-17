@@ -2,21 +2,40 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 import Reveal from './Reveal'
 import Title from './Title'
+import { bannerPosters } from '../assets/assets'
 
 const PersonalizationBanner = () => {
   return (
-    <div className='my-16'>
-      <div className='text-center py-6 text-3xl'>
-        <Title text1={'PERSONALIZATION'} text2={''} />
-        <p className='w-3/4 m-auto text-xs sm:text-sm md:text-base text-gray-600'>Custom Prints — your photo or design, printed as a poster.</p>
+    <div className='my-14'>
+      <div className='text-center text-xl sm:text-2xl'>
+        <Title text1={'PERSONALIZATION'} />
+        <p className='text-xs sm:text-sm text-gray-500 mt-1 normal-case tracking-normal'>Custom Prints</p>
       </div>
-      <Reveal className='rounded-2xl bg-neutral-950 text-white px-6 sm:px-14 py-12 flex flex-col sm:flex-row items-center justify-between gap-6'>
-        <div>
-          <h3 className='heading-font text-2xl sm:text-3xl mb-2'>Got a design of your own?</h3>
-          <p className='text-white/60 text-sm max-w-md'>Send us your photo, artwork, or event design and we'll print it as a custom poster — single prints or bulk event orders.</p>
-        </div>
-        <Link to='/custom-posters' className='shrink-0 bg-[#FF6B00] text-white px-8 py-3 text-sm font-medium rounded hover:bg-white hover:text-black transition-colors whitespace-nowrap'>
-          Start a Custom Order
+
+      <Reveal className='mt-6'>
+        <Link
+          to='/custom-posters'
+          className='group relative block overflow-hidden bg-neutral-950 text-white min-h-[170px] sm:min-h-[230px]'
+        >
+          {/* faded poster strip */}
+          <div className='absolute inset-0 flex opacity-35'>
+            {bannerPosters.map((src, i) => (
+              <img key={i} src={src} alt='' className='flex-1 h-full object-cover' />
+            ))}
+          </div>
+          <div className='absolute inset-0 bg-gradient-to-r from-black via-black/80 to-black/40' />
+
+          <div className='relative flex flex-col items-center justify-center text-center h-full px-6 py-12 gap-3'>
+            <p className='heading-font tracking-wide text-[clamp(1.4rem,4.5vw,3rem)] leading-none'>
+              YOUR PHOTO, YOUR POSTER
+            </p>
+            <p className='text-white/60 text-xs sm:text-sm max-w-md'>
+              Upload any photo or artwork — we print it on premium matte paper in A4 or A3.
+            </p>
+            <span className='inline-block mt-2 bg-brand group-hover:bg-white group-hover:text-black text-white text-xs sm:text-sm px-7 py-2.5 transition-colors'>
+              Start a Custom Order
+            </span>
+          </div>
         </Link>
       </Reveal>
     </div>

@@ -27,6 +27,8 @@ const ShopContextProvider = (props) => {
 
     const [shippingAddress, setShippingAddress] = useState({})
     const [couponCode, setCouponCode] = useState('')
+    // Filenames of artwork uploaded for custom posters, keyed by product id.
+    const [customUploads, setCustomUploads] = useState({})
 
     const toggleWishlist = (itemId) => {
         setWishlist(prev => {
@@ -202,7 +204,8 @@ const ShopContextProvider = (props) => {
         setToken, token,
         wishlist, toggleWishlist,
         shippingAddress, setShippingAddress,
-        couponCode, setCouponCode
+        couponCode, setCouponCode,
+        customUploads, setCustomUploads
     }
 
     return (

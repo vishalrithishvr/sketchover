@@ -27,7 +27,7 @@ const Footer = () => {
               </p>
               <div className='flex gap-3 mt-5'>
                 {socialLinks.map(({ Icon, href, label }) => (
-                  <a key={label} href={href} target='_blank' rel='noreferrer' aria-label={label} className='w-8 h-8 rounded-full border border-white/20 flex items-center justify-center hover:border-[#FF6B00] hover:text-[#FF6B00] transition-colors'>
+                  <a key={label} href={href} target='_blank' rel='noreferrer' aria-label={label} className='w-8 h-8 rounded-full border border-white/20 flex items-center justify-center hover:border-brand hover:text-brand transition-colors'>
                     <Icon className='w-4 h-4' />
                   </a>
                 ))}

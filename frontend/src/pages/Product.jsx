@@ -1,145 +1,174 @@
-import React, { useContext, useEffect, useState } from 'react'
+import React, { useContext, useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { ShopContext } from '../context/ShopContext';
-import { assets, getSizePrice, formatProductName, SIZES } from '../assets/assets';
+import { getSizePrice, formatProductName, DEFAULT_SIZE } from '../assets/assets';
 import RelatedProducts from '../components/RelatedProducts';
-import { HeartIcon, PlusIcon, MinusIcon } from '../components/icons/NavIcons';
+import LatestArrivalGrid from '../components/LatestArrivalGrid';
+import NewsletterBox from '../components/NewsletterBox';
+import { PlusIcon, MinusIcon, UploadIcon, HeartIcon } from '../components/icons/NavIcons';
+
+const Accordion = ({ title, children }) => {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className='border-b border-gray-200'>
+      <button onClick={()=>setOpen(o=>!o)} className='w-full flex items-center justify-between py-3.5 text-left'>
+        <span className='text-sm text-gray-800'>{title}</span>
+        {open ? <MinusIcon className='w-4 h-4 text-gray-500' /> : <PlusIcon className='w-4 h-4 text-gray-500' />}
+      </button>
+      {open && <div className='pb-4 text-sm text-gray-500 flex flex-col gap-3'>{children}</div>}
+    </div>
+  )
+}
 
 const Product = () => {
 
   const { productId } = useParams();
-  const { products, currency ,addToCart, wishlist, toggleWishlist } = useContext(ShopContext);
+  const { products, addToCart, customUploads, setCustomUploads, wishlist, toggleWishlist } = useContext(ShopContext);
   const [productData, setProductData] = useState(false);
   const [image, setImage] = useState('')
   const [size,setSize] = useState('')
   const [quantity, setQuantity] = useState(1)
-  const [openTab, setOpenTab] = useState('description')
-
-  const fetchProductData = async () => {
-
-    products.map((item) => {
-      if (item._id === productId) {
-        setProductData(item)
-        setImage(item.image[0])
-        setSize(item.sizes[0])
-        return null;
-      }
-    })
-
-  }
+  const fileRef = useRef(null)
 
   useEffect(() => {
-    fetchProductData();
-    setQuantity(1);
-  }, [productId,products])
+    const found = products.find(item => item._id === productId)
+    if (found) {
+      setProductData(found)
+      setImage(found.image[0])
+      setSize(found.sizes.includes(DEFAULT_SIZE) ? DEFAULT_SIZE : found.sizes[0])
+      setQuantity(1)
+    }
+  }, [productId, products])
 
   if (!productData) return <div className='opacity-0'></div>
 
-  const isWishlisted = wishlist.includes(productData._id);
-  const { price, originalPrice } = getSizePrice(size || productData.sizes[0], productData.subCategory);
+  const { price, originalPrice } = getSizePrice(size || DEFAULT_SIZE, productData.subCategory);
   const hasDiscount = originalPrice > price;
+  const uploadedName = customUploads[productData._id]
+  const isWishlisted = wishlist.includes(productData._id)
+
+  const onUpload = (e) => {
+    const file = e.target.files?.[0]
+    if (file) setCustomUploads(prev => ({ ...prev, [productData._id]: file.name }))
+  }
 
   return (
-    <div className='border-t-2 pt-10 transition-opacity ease-in duration-500 opacity-100'>
-      {/*----------- Product Data-------------- */}
-      <div className='flex gap-12 sm:gap-12 flex-col sm:flex-row'>
+    <div className='pt-8'>
 
-        {/*---------- Product Images------------- */}
-        <div className='flex-1 flex flex-col-reverse gap-3 sm:flex-row'>
-          <div className='flex sm:flex-col overflow-x-auto sm:overflow-y-scroll justify-between sm:justify-normal sm:w-[18.7%] w-full'>
-              {
-                productData.image.map((item,index)=>(
-                  <img onClick={()=>setImage(item)} src={item} key={index} className={`w-[24%] sm:w-full sm:mb-3 flex-shrink-0 cursor-pointer rounded border-2 ${image === item ? 'border-black' : 'border-transparent'}`} alt="" />
-                ))
-              }
+      <div className='grid grid-cols-1 sm:grid-cols-2 gap-8 lg:gap-14'>
+
+        {/* Images */}
+        <div>
+          <div className='relative bg-gray-100 aspect-[763/801] overflow-hidden'>
+            <img className='w-full h-full object-cover' src={image} alt={formatProductName(productData)} />
+            {(productData.isCustom || hasDiscount) && (
+              <span className='absolute top-0 right-0 bg-black text-white text-[11px] px-4 py-1.5'>
+                {productData.isCustom ? 'Custom' : 'Sale'}
+              </span>
+            )}
+            <button
+              onClick={()=>toggleWishlist(productData._id)}
+              aria-label={isWishlisted ? 'Remove from favorites' : 'Add to favorites'}
+              className={`absolute top-3 left-3 w-9 h-9 rounded-full flex items-center justify-center transition-colors ${isWishlisted ? 'bg-brand text-white' : 'bg-white/90 text-gray-600 hover:text-brand'}`}
+            >
+              <HeartIcon filled={isWishlisted} className='w-4 h-4' />
+            </button>
           </div>
-          <div className='w-full sm:w-[80%] relative'>
-              <img className='w-full h-auto rounded-lg' src={image} alt="" />
+
+          <div className='grid grid-cols-4 gap-2 sm:gap-3 mt-3'>
+            {productData.image.map((item,index)=>(
               <button
-                onClick={()=>toggleWishlist(productData._id)}
-                aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
-                className={`absolute top-3 right-3 w-9 h-9 rounded-full flex items-center justify-center transition-colors ${isWishlisted ? 'bg-[#FF6B00] text-white' : 'bg-white/90 text-gray-600 hover:text-[#FF6B00]'}`}
+                key={index}
+                onClick={()=>setImage(item)}
+                className={`aspect-square overflow-hidden bg-gray-100 border-2 ${image === item ? 'border-black' : 'border-transparent'}`}
               >
-                <HeartIcon filled={isWishlisted} className='w-4 h-4' />
+                <img src={item} className='w-full h-full object-cover' alt='' />
               </button>
-              {hasDiscount && (
-                <span className='absolute top-3 left-3 bg-black text-white text-[10px] font-semibold uppercase tracking-wide px-2 py-1 rounded'>Sale</span>
+            ))}
+          </div>
+        </div>
+
+        {/* Info */}
+        <div>
+          <h1 className='heading-font uppercase tracking-[0.06em] text-2xl sm:text-3xl leading-tight'>
+            {formatProductName(productData)}
+          </h1>
+
+          <div className='flex items-center gap-3 mt-3'>
+            {hasDiscount && <span className='text-gray-400 line-through'>RS. {originalPrice}.00</span>}
+            <span className='text-xl'>RS. {price}.00</span>
+          </div>
+
+          {/* Size */}
+          <p className='text-sm text-gray-500 mt-6 mb-2'>Size</p>
+          <div className='flex flex-wrap gap-2'>
+            {productData.sizes.map((item)=>(
+              <button
+                key={item}
+                onClick={()=>setSize(item)}
+                className={`min-w-[56px] py-2 px-4 text-sm transition-colors ${item === size ? 'bg-black text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+
+          {/* Qty */}
+          <p className='text-sm text-gray-500 mt-5 mb-2'>Qty</p>
+          <div className='inline-flex items-center border border-gray-300'>
+            <button onClick={()=>setQuantity(q => Math.max(1, q - 1))} aria-label='Decrease' className='w-10 h-10 flex items-center justify-center text-gray-600 hover:text-black'>
+              <MinusIcon className='w-3.5 h-3.5' />
+            </button>
+            <span className='w-10 text-center text-sm'>{quantity}</span>
+            <button onClick={()=>setQuantity(q => q + 1)} aria-label='Increase' className='w-10 h-10 flex items-center justify-center text-gray-600 hover:text-black'>
+              <PlusIcon className='w-3.5 h-3.5' />
+            </button>
+          </div>
+
+          {/* Custom upload */}
+          {productData.isCustom && (
+            <div className='mt-6'>
+              <input ref={fileRef} type='file' accept='image/*' hidden onChange={onUpload} />
+              <button
+                onClick={()=>fileRef.current?.click()}
+                className='w-full bg-black text-white py-3 text-sm flex items-center justify-center gap-2 hover:bg-brand transition-colors'
+              >
+                <UploadIcon className='w-4 h-4' />
+                Upload Image
+              </button>
+              {uploadedName && (
+                <p className='text-xs text-gray-500 mt-2 truncate'>Attached: {uploadedName}</p>
               )}
-          </div>
-        </div>
-
-        {/* -------- Product Info ---------- */}
-        <div className='flex-1'>
-          <h1 className='font-medium text-2xl mt-2'>{formatProductName(productData)}</h1>
-          <div className=' flex items-center gap-1 mt-2'>
-              <img src={assets.star_icon} alt="" className="w-3 5" />
-              <img src={assets.star_icon} alt="" className="w-3 5" />
-              <img src={assets.star_icon} alt="" className="w-3 5" />
-              <img src={assets.star_icon} alt="" className="w-3 5" />
-              <img src={assets.star_dull_icon} alt="" className="w-3 5" />
-              <p className='pl-2'>(122)</p>
-          </div>
-          <div className='flex items-center gap-3 mt-5'>
-            {hasDiscount && <p className='text-lg text-gray-400 line-through'>{currency}{originalPrice}</p>}
-            <p className='text-3xl font-medium'>{currency}{price}</p>
-          </div>
-          <p className='mt-5 text-gray-500 md:w-4/5'>{productData.description}</p>
-          <div className='flex flex-col gap-4 my-8'>
-              <p>Select Size</p>
-              <div className='flex gap-2'>
-                {productData.sizes.map((item,index)=>(
-                  <button onClick={()=>setSize(item)} className={`border py-2 px-4 bg-gray-100 rounded ${item === size ? 'border-black bg-black text-white' : ''}`} key={index}>{item}</button>
-                ))}
-              </div>
-          </div>
-
-          <div className='flex items-center gap-6'>
-            <div className='flex items-center border rounded'>
-              <button onClick={()=>setQuantity(q => Math.max(1, q - 1))} className='w-9 h-10 flex items-center justify-center text-gray-600 hover:text-black'>
-                <MinusIcon className='w-3.5 h-3.5' />
-              </button>
-              <span className='w-8 text-center text-sm'>{quantity}</span>
-              <button onClick={()=>setQuantity(q => q + 1)} className='w-9 h-10 flex items-center justify-center text-gray-600 hover:text-black'>
-                <PlusIcon className='w-3.5 h-3.5' />
-              </button>
             </div>
-            <button onClick={()=>addToCart(productData._id,size,quantity)} className='flex-1 bg-black text-white px-8 py-3 text-sm rounded hover:bg-[#FF6B00] transition-colors'>ADD TO CART</button>
-          </div>
-
-          <hr className='mt-8 sm:w-4/5' />
-          <div className='text-sm text-gray-500 mt-5 flex flex-col gap-1'>
-              <p>100% Original product.</p>
-              <p>Cash on delivery is available on this product.</p>
-              <p>Easy return and exchange policy within 7 days.</p>
-          </div>
-        </div>
-      </div>
-
-      {/* ---------- Description & Shipping Section ------------- */}
-      <div className='mt-20'>
-        <div className='flex'>
-          <button onClick={()=>setOpenTab('description')} className={`border px-5 py-3 text-sm ${openTab === 'description' ? 'font-bold' : 'text-gray-500'}`}>Description</button>
-          <button onClick={()=>setOpenTab('shipping')} className={`border px-5 py-3 text-sm ${openTab === 'shipping' ? 'font-bold' : 'text-gray-500'}`}>Shipping and Packaging</button>
-        </div>
-        <div className='flex flex-col gap-4 border px-6 py-6 text-sm text-gray-500'>
-          {openTab === 'description' ? (
-            <>
-              <p>Printed on premium 200 GSM matte paper for true-to-design colour and a glare-free finish. Every poster ships rolled in a rigid tube to arrive flat and crease-free.</p>
-              <p>Available in {SIZES.join(', ')} — pick the size that fits your wall. Frame not included.</p>
-            </>
-          ) : (
-            <>
-              <p>Every order is rolled (never folded) and shipped in a rigid cardboard tube so it arrives flat and crease-free.</p>
-              <p>Orders are printed and dispatched within 2-3 business days. Delivery typically takes 4-7 days depending on your location — free on all orders (minimum order value ₹499).</p>
-            </>
           )}
+
+          <button
+            onClick={()=>addToCart(productData._id,size,quantity)}
+            className='w-full bg-black text-white py-3 text-sm mt-3 hover:bg-brand transition-colors'
+          >
+            Add to cart
+          </button>
+
+          {/* Accordions */}
+          <div className='mt-8'>
+            <Accordion title='Description'>
+              <p>{productData.description}</p>
+              <p>Printed on premium 200 GSM matte paper for true-to-design colour and a glare-free finish.</p>
+              <p>Available in {productData.sizes.join(', ')} — frame not included.</p>
+            </Accordion>
+            <Accordion title='Shipping and Packaging'>
+              <p>Every order is rolled (never folded) and shipped in a rigid cardboard tube so it arrives flat and crease-free.</p>
+              <p>Printed and dispatched within 2-3 business days; delivery typically takes 4-7 days. Free delivery on orders from ₹399.</p>
+            </Accordion>
+          </div>
         </div>
       </div>
 
-      {/* --------- display related products ---------- */}
+      <RelatedProducts category={productData.category} subCategory={productData.subCategory} currentId={productData._id} />
 
-      <RelatedProducts category={productData.category} subCategory={productData.subCategory} />
+      <LatestArrivalGrid excludeId={productData._id} />
 
+      <NewsletterBox />
     </div>
   )
 }

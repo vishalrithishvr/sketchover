@@ -1,10 +1,11 @@
 import React, { useContext, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ShopContext } from '../context/ShopContext'
-import { MIN_ORDER_VALUE } from '../assets/assets'
 import Title from '../components/Title'
 import CheckoutSteps from '../components/CheckoutSteps'
 import OrderSummary from '../components/OrderSummary'
+import CustomerReviews from '../components/CustomerReviews'
+import NewsletterBox from '../components/NewsletterBox'
 
 const emptyAddress = {
   firstName: '', lastName: '', street: '', landmark: '',
@@ -12,15 +13,15 @@ const emptyAddress = {
   email: '', phone: ''
 }
 
-const Input = ({ label, name, value, onChange, required = true, type = 'text' }) => (
+const Field = ({ label, name, value, onChange, required = true, type = 'text' }) => (
   <div>
-    <label className='text-xs text-gray-500'>{label}{required && ' *'}</label>
+    <label className='block text-[11px] text-gray-500 mb-1'>{label}{required && ' *'}</label>
     <input
       type={type}
       required={required}
       value={value}
       onChange={(e)=>onChange(name, e.target.value)}
-      className='w-full border border-gray-300 rounded px-3 py-2 mt-1 outline-none focus:border-black'
+      className='w-full border border-gray-400 px-3 py-2.5 text-sm outline-none focus:border-black'
     />
   </div>
 )
@@ -33,59 +34,70 @@ const Shipping = () => {
 
   const update = (name, value) => setForm(prev => ({ ...prev, [name]: value }))
 
+  const cartIsEmpty = getCartAmount() === 0;
+
+  useEffect(() => {
+    if (cartIsEmpty) navigate('/cart')
+  }, [cartIsEmpty])
+
+  if (cartIsEmpty) return null
+
   const onSubmit = (e) => {
     e.preventDefault()
     setShippingAddress(form)
     navigate('/place-order')
   }
 
-  const blocked = getCartAmount() < MIN_ORDER_VALUE;
-
-  useEffect(() => {
-    if (blocked) navigate('/cart')
-  }, [blocked])
-
-  if (blocked) return null
-
   return (
-    <div className='border-t pt-6'>
+    <div>
       <CheckoutSteps current='Shipping' />
-      <div className='text-2xl mb-6'>
-        <Title text1={'SHIPPING'} text2={'ADDRESS'} />
+
+      <div className='text-xl sm:text-2xl mb-8'>
+        <Title text1={'SHIPPING ADDRESS'} />
       </div>
 
-      <form onSubmit={onSubmit} className='grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-10'>
+      <form onSubmit={onSubmit} className='grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-10 lg:gap-16'>
         <div className='flex flex-col gap-4'>
           <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
-            <Input label='First name' name='firstName' value={form.firstName} onChange={update} />
-            <Input label='Last name' name='lastName' value={form.lastName} onChange={update} />
+            <Field label='First name' name='firstName' value={form.firstName} onChange={update} />
+            <Field label='Last name' name='lastName' value={form.lastName} onChange={update} />
           </div>
-          <Input label='Street number and Area' name='street' value={form.street} onChange={update} />
-          <Input label='Landmark' name='landmark' value={form.landmark} onChange={update} required={false} />
+          <Field label='Street number and Area' name='street' value={form.street} onChange={update} />
+          <Field label='Landmark' name='landmark' value={form.landmark} onChange={update} />
           <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
-            <Input label='City' name='city' value={form.city} onChange={update} />
-            <Input label='Postal code' name='postalCode' value={form.postalCode} onChange={update} />
+            <Field label='City' name='city' value={form.city} onChange={update} />
+            <Field label='Postal code' name='postalCode' value={form.postalCode} onChange={update} />
           </div>
           <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
-            <Input label='State' name='state' value={form.state} onChange={update} />
-            <Input label='Country' name='country' value={form.country} onChange={update} />
+            <Field label='State' name='state' value={form.state} onChange={update} />
+            <Field label='Country' name='country' value={form.country} onChange={update} />
           </div>
 
-          <p className='text-sm font-medium mt-4'>Contact Info</p>
+          <p className='text-base mt-4'>Contact Info</p>
           <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
-            <Input label='Email address' name='email' type='email' value={form.email} onChange={update} />
-            <Input label='Mobile number' name='phone' type='tel' value={form.phone} onChange={update} />
+            <Field label='Email address' name='email' type='email' value={form.email} onChange={update} />
+            <Field label='Mobile number' name='phone' type='tel' value={form.phone} onChange={update} />
           </div>
-
-          <button type='submit' className='sm:hidden bg-black text-white text-sm mt-4 py-3 rounded hover:bg-[#FF6B00] transition-colors'>Continue to Checkout</button>
         </div>
 
         <div>
-          <OrderSummary compact showCoupon={false}>
-            <button type='submit' className='hidden sm:block w-full bg-black text-white text-sm mt-4 py-3 rounded hover:bg-[#FF6B00] transition-colors'>Continue to Checkout</button>
-          </OrderSummary>
+          <OrderSummary
+            showItems
+            action={({ agreed }) => (
+              <button
+                type='submit'
+                disabled={!agreed}
+                className='w-full bg-black text-white py-3.5 hover:bg-brand transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed'
+              >
+                Place Order
+              </button>
+            )}
+          />
         </div>
       </form>
+
+      <CustomerReviews />
+      <NewsletterBox />
     </div>
   )
 }

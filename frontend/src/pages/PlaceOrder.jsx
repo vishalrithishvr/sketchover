@@ -2,19 +2,20 @@ import React, { useContext, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import Title from '../components/Title'
 import CheckoutSteps from '../components/CheckoutSteps'
-import OrderSummary from '../components/OrderSummary'
+import OrderSummary, { useOrderTotals } from '../components/OrderSummary'
+import FavoritesList from '../components/FavoritesList'
+import NewsletterBox from '../components/NewsletterBox'
 import { ShopContext } from '../context/ShopContext'
 import { getSizePrice, formatProductName, MIN_ORDER_VALUE } from '../assets/assets'
-import { WhatsappIcon } from '../components/icons/NavIcons'
 
 const WHATSAPP_NUMBER = '918870333236'
 
 const PlaceOrder = () => {
 
-    const { products, cartItems, currency, getCartAmount, getComboDiscount, couponCode, shippingAddress, setCartItems } = useContext(ShopContext)
+    const { products, cartItems, currency, getCartAmount, couponCode, shippingAddress, setCartItems, customUploads } = useContext(ShopContext)
+    const { subtotal, comboDiscount, discountPct, total } = useOrderTotals()
     const navigate = useNavigate()
 
-    const subtotal = getCartAmount();
     const blocked = subtotal === 0 || subtotal < MIN_ORDER_VALUE;
 
     useEffect(() => {
@@ -33,18 +34,16 @@ const PlaceOrder = () => {
                 if (cartItems[itemId][size] > 0) {
                     const { price } = getSizePrice(size, product.subCategory)
                     lines.push(`• ${formatProductName(product)} (Size ${size}) x${cartItems[itemId][size]} — ${currency}${price * cartItems[itemId][size]}`)
+                    if (product.isCustom && customUploads[product._id]) {
+                        lines.push(`   ↳ artwork: ${customUploads[product._id]} (will send in chat)`)
+                    }
                 }
             }
         }
 
-        const comboDiscount = getComboDiscount();
-        const couponPct = { SKO10: 10, SKO5: 5, WELCOME5: 5 }[couponCode.trim().toUpperCase()] || 0;
-        const couponDiscount = Math.round((subtotal - comboDiscount) * couponPct / 100);
-        const total = Math.max(0, subtotal - comboDiscount - couponDiscount);
-
         lines.push('', `Subtotal: ${currency}${subtotal}`)
         if (comboDiscount > 0) lines.push(`Combo Offer (Buy 4 Get 4 Free): -${currency}${comboDiscount}`)
-        if (couponPct > 0) lines.push(`Discount (${couponCode.trim().toUpperCase()}): ${couponPct}%`)
+        if (discountPct > 0) lines.push(`Discount (${couponCode.trim().toUpperCase()}): ${discountPct}%`)
         lines.push(`Total: ${currency}${total}`, '')
 
         if (shippingAddress?.firstName) {
@@ -60,51 +59,61 @@ const PlaceOrder = () => {
     }
 
     const checkoutOnWhatsapp = () => {
-        const text = encodeURIComponent(buildWhatsappMessage())
-        window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${text}`, '_blank')
+        window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(buildWhatsappMessage())}`, '_blank')
         setCartItems({})
         navigate('/')
     }
 
     return (
-        <div className='border-t pt-6'>
+        <div>
             <CheckoutSteps current='Checkout' />
-            <div className='text-2xl mb-6'>
-                <Title text1={'CONFIRMATION'} text2={''} />
+
+            <div className='text-xl sm:text-2xl mb-8'>
+                <Title text1={'CONFIRMATION'} />
             </div>
 
-            <div className='grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-10'>
-                <div className='border rounded-lg p-5 sm:p-6'>
-                    <div className='flex justify-between items-start mb-4'>
-                        <p className='text-sm font-medium'>Shipping Address</p>
-                        <Link to='/shipping' className='text-xs underline text-gray-500 hover:text-black'>Change</Link>
-                    </div>
-                    {shippingAddress?.firstName ? (
-                        <div className='text-sm text-gray-600 leading-relaxed'>
-                            <p>{shippingAddress.firstName} {shippingAddress.lastName}</p>
-                            <p>{shippingAddress.street}{shippingAddress.landmark ? `, ${shippingAddress.landmark}` : ''}</p>
-                            <p>{[shippingAddress.city, shippingAddress.state, shippingAddress.postalCode].filter(Boolean).join(', ')}</p>
-                            <p>{shippingAddress.country}</p>
-                            <p className='mt-2'>{shippingAddress.email} · {shippingAddress.phone}</p>
+            <div className='grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-10 lg:gap-16'>
+                <div>
+                    <div className='border border-black px-5 py-5 flex items-start justify-between gap-4'>
+                        <div className='min-w-0'>
+                            <p className='heading-font uppercase tracking-[0.06em] text-lg sm:text-xl'>Your Shipping Address</p>
+                            {shippingAddress?.firstName ? (
+                                <div className='text-sm text-gray-600 leading-relaxed mt-3'>
+                                    <p>{shippingAddress.firstName} {shippingAddress.lastName}</p>
+                                    <p>{shippingAddress.street}{shippingAddress.landmark ? `, ${shippingAddress.landmark}` : ''}</p>
+                                    <p>{[shippingAddress.city, shippingAddress.state, shippingAddress.postalCode].filter(Boolean).join(', ')}</p>
+                                    <p>{shippingAddress.country}</p>
+                                    <p className='mt-2'>{shippingAddress.email} · {shippingAddress.phone}</p>
+                                </div>
+                            ) : (
+                                <p className='text-sm text-gray-400 mt-3'>No address on file yet.</p>
+                            )}
                         </div>
-                    ) : (
-                        <p className='text-sm text-gray-400'>No address on file — <Link to='/shipping' className='underline'>add one</Link>.</p>
-                    )}
+                        <Link to='/shipping' className='text-sm underline text-gray-600 hover:text-black shrink-0'>Change</Link>
+                    </div>
+
+                    <div className='mt-10'>
+                        <FavoritesList />
+                    </div>
                 </div>
 
                 <div>
-                    <OrderSummary showCoupon={false}>
-                        <button
-                            onClick={checkoutOnWhatsapp}
-                            className='w-full flex items-center justify-center gap-2 bg-[#25D366] text-white text-sm font-medium mt-4 py-3 rounded hover:opacity-90 transition-opacity'
-                        >
-                            <WhatsappIcon className='w-4 h-4' />
-                            Checkout On WhatsApp
-                        </button>
-                        <p className='text-[11px] text-gray-400 mt-2'>We'll confirm your order and payment details over WhatsApp.</p>
-                    </OrderSummary>
+                    <OrderSummary
+                        showItems
+                        action={({ agreed }) => (
+                            <button
+                                onClick={checkoutOnWhatsapp}
+                                disabled={!agreed}
+                                className='w-full bg-whatsapp text-white py-3.5 hover:opacity-90 transition-opacity disabled:bg-gray-400 disabled:cursor-not-allowed'
+                            >
+                                Checkout On Whatsapp
+                            </button>
+                        )}
+                    />
                 </div>
             </div>
+
+            <NewsletterBox />
         </div>
     )
 }

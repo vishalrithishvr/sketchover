@@ -108,6 +108,35 @@ export const PinterestIcon = (props) => (
   </svg>
 )
 
+export const ArrowRightIcon = (props) => (
+  <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.6' strokeLinecap='round' strokeLinejoin='round' {...props}>
+    <line x1='3' y1='12' x2='20' y2='12' />
+    <polyline points='14 6 20 12 14 18' />
+  </svg>
+)
+
+export const TrashIcon = (props) => (
+  <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.6' strokeLinecap='round' strokeLinejoin='round' {...props}>
+    <polyline points='3 6 21 6' />
+    <path d='M8 6V4h8v2' />
+    <path d='M6 6l1 14h10l1-14' />
+  </svg>
+)
+
+export const StarIcon = (props) => (
+  <svg viewBox='0 0 24 24' fill='currentColor' {...props}>
+    <path d='M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4-5.8-3-5.8 3 1.1-6.4L2.6 9.4l6.5-.9L12 2.6Z' />
+  </svg>
+)
+
+export const UploadIcon = (props) => (
+  <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.7' strokeLinecap='round' strokeLinejoin='round' {...props}>
+    <path d='M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3' />
+    <polyline points='8 8 12 4 16 8' />
+    <line x1='12' y1='4' x2='12' y2='15' />
+  </svg>
+)
+
 export const QualityIcon = (props) => (
   <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.6' strokeLinecap='round' strokeLinejoin='round' {...props}>
     <path d='M12 3l2.6 2.7 3.7-.5.5 3.7L21.5 11l-2.7 2.6.5 3.7-3.7-.5L13 20.5 10.4 17.8l-3.7.5-.5-3.7L3.5 12l2.7-2.6-.5-3.7 3.7.5L12 3Z' />
