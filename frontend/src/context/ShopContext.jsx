@@ -27,8 +27,69 @@ const ShopContextProvider = (props) => {
 
     const [shippingAddress, setShippingAddress] = useState({})
     const [couponCode, setCouponCode] = useState('')
-    // Filenames of artwork uploaded for custom posters, keyed by product id.
-    const [customUploads, setCustomUploads] = useState({})
+
+    // Artwork the shopper uploaded for custom posters. Kept in localStorage so the
+    // poster is still on the site after a refresh.
+    const [customPosters, setCustomPosters] = useState(() => {
+        try {
+            return JSON.parse(localStorage.getItem('customPosters')) || []
+        } catch {
+            return []
+        }
+    })
+
+    const persistCustomPosters = (next) => {
+        setCustomPosters(next)
+        try {
+            localStorage.setItem('customPosters', JSON.stringify(next))
+        } catch {
+            // Storage full — keep it in memory for this session rather than failing the upload.
+            toast.info('Poster added for this session only (browser storage is full).')
+        }
+    }
+
+    // Downscale before storing: full-resolution photos blow past the localStorage quota.
+    const readScaledImage = (file, maxEdge = 900) => new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onerror = () => reject(new Error('Could not read that file.'))
+        reader.onload = () => {
+            const img = new Image()
+            img.onerror = () => reject(new Error('That file is not a readable image.'))
+            img.onload = () => {
+                const scale = Math.min(1, maxEdge / Math.max(img.width, img.height))
+                const canvas = document.createElement('canvas')
+                canvas.width = Math.round(img.width * scale)
+                canvas.height = Math.round(img.height * scale)
+                canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height)
+                resolve(canvas.toDataURL('image/jpeg', 0.82))
+            }
+            img.src = reader.result
+        }
+        reader.readAsDataURL(file)
+    })
+
+    const addCustomPoster = async (file, size) => {
+        try {
+            const dataUrl = await readScaledImage(file)
+            const poster = {
+                id: `cp_${Date.now()}`,
+                fileName: file.name,
+                dataUrl,
+                size,
+                createdAt: Date.now(),
+            }
+            persistCustomPosters([poster, ...customPosters])
+            toast.success('Custom poster saved to your collection.')
+            return poster
+        } catch (error) {
+            toast.error(error.message || 'Upload failed.')
+            return null
+        }
+    }
+
+    const removeCustomPoster = (id) => {
+        persistCustomPosters(customPosters.filter(p => p.id !== id))
+    }
 
     const toggleWishlist = (itemId) => {
         setWishlist(prev => {
@@ -205,7 +266,7 @@ const ShopContextProvider = (props) => {
         wishlist, toggleWishlist,
         shippingAddress, setShippingAddress,
         couponCode, setCouponCode,
-        customUploads, setCustomUploads
+        customPosters, addCustomPoster, removeCustomPoster
     }
 
     return (

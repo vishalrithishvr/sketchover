@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useRef, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import { ShopContext } from '../context/ShopContext';
 import { getSizePrice, formatProductName, DEFAULT_SIZE } from '../assets/assets';
 import RelatedProducts from '../components/RelatedProducts';
@@ -23,7 +23,7 @@ const Accordion = ({ title, children }) => {
 const Product = () => {
 
   const { productId } = useParams();
-  const { products, addToCart, customUploads, setCustomUploads, wishlist, toggleWishlist } = useContext(ShopContext);
+  const { products, addToCart, customPosters, addCustomPoster, wishlist, toggleWishlist } = useContext(ShopContext);
   const [productData, setProductData] = useState(false);
   const [image, setImage] = useState('')
   const [size,setSize] = useState('')
@@ -44,12 +44,14 @@ const Product = () => {
 
   const { price, originalPrice } = getSizePrice(size || DEFAULT_SIZE, productData.subCategory);
   const hasDiscount = originalPrice > price;
-  const uploadedName = customUploads[productData._id]
   const isWishlisted = wishlist.includes(productData._id)
+  // Most recently uploaded artwork, shown as a preview on the custom product.
+  const latestUpload = customPosters[0]
 
-  const onUpload = (e) => {
+  const onUpload = async (e) => {
     const file = e.target.files?.[0]
-    if (file) setCustomUploads(prev => ({ ...prev, [productData._id]: file.name }))
+    if (file) await addCustomPoster(file, size)
+    e.target.value = ''
   }
 
   return (
@@ -136,8 +138,14 @@ const Product = () => {
                 <UploadIcon className='w-4 h-4' />
                 Upload Image
               </button>
-              {uploadedName && (
-                <p className='text-xs text-gray-500 mt-2 truncate'>Attached: {uploadedName}</p>
+              {latestUpload && (
+                <div className='flex items-center gap-3 mt-3 border border-gray-200 p-2'>
+                  <img src={latestUpload.dataUrl} alt='' className='w-12 h-14 object-cover bg-gray-100 shrink-0' />
+                  <div className='min-w-0 text-xs'>
+                    <p className='truncate text-gray-700'>{latestUpload.fileName}</p>
+                    <Link to='/custom-posters' className='text-brand hover:underline'>Saved — view your custom posters</Link>
+                  </div>
+                </div>
               )}
             </div>
           )}

@@ -18,14 +18,14 @@ const LatestCollection = () => {
   return (
     <div className='my-14 bg-neutral-950 text-white rounded-lg px-4 sm:px-7 py-8 sm:py-10'>
 
-      <Reveal className='flex items-start justify-between gap-4 mb-6'>
+      <Reveal className='flex items-start justify-between gap-4 mb-7'>
         <div>
-          <span className='inline-block text-[10px] tracking-[0.2em] uppercase border border-white/25 rounded-full px-3 py-1 text-white/70 mb-3'>
+          <span className='inline-block text-xs sm:text-sm font-bold tracking-[0.2em] uppercase border border-white/30 rounded-full px-4 py-1.5 text-white mb-4'>
             Fresh Drops
           </span>
-          <h2 className='heading-font text-2xl sm:text-3xl tracking-[0.08em]'>NEW ARRIVALS</h2>
+          <h2 className='heading-font font-bold text-3xl sm:text-4xl lg:text-5xl tracking-[0.08em]'>NEW ARRIVALS</h2>
         </div>
-        <Link to='/collection?sort=new' className='text-xs text-white/70 hover:text-brand transition-colors whitespace-nowrap mt-1'>
+        <Link to='/collection?sort=new' className='text-sm sm:text-base font-bold text-white hover:text-brand transition-colors whitespace-nowrap mt-2'>
           View all
         </Link>
       </Reveal>

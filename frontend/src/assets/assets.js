@@ -40,6 +40,28 @@ import motivateLearnEarn from './posters/motivate-learn-earn.jpg'
 
 import gamingCodZombies from './posters/gaming-cod-zombies.jpg'
 
+import sportsDhoniWhistle from './posters/sports-dhoni-whistle.jpg'
+import gamingGtaVi from './posters/gaming-gta-vi.jpg'
+import movieMaster from './posters/movie-master.jpg'
+import heroSpiderverseLove from './posters/hero-spiderverse-love.jpg'
+import animeItachi from './posters/anime-itachi.jpg'
+import heroThanos from './posters/hero-thanos.jpg'
+import musicHiphopLegends from './posters/music-hiphop-legends.jpg'
+import movieLeoBadass from './posters/movie-leo-badass.jpg'
+
+// Brand artwork (banners + category tiles) supplied by the studio.
+import bannerHero from './brand/banner-hero.jpg'
+import bannerCombos from './brand/banner-combos.jpg'
+import bannerThala from './brand/banner-thala.jpg'
+import catCars from './brand/cat-cars.jpg'
+import catAnime from './brand/cat-anime.jpg'
+import catSports from './brand/cat-sports.jpg'
+import catMovies from './brand/cat-movies.jpg'
+import catMusic from './brand/cat-music.jpg'
+import catGaming from './brand/cat-gaming.jpg'
+import catGym from './brand/cat-gym.jpg'
+import catPersonalized from './brand/cat-personalized.jpg'
+
 import bin_icon from './bin_icon.png'
 import exchange_icon from './exchange_icon.png'
 import quality_icon from './quality_icon.png'
@@ -61,20 +83,26 @@ export const assets = {
     contactImage: animeOnepieceCrewSet,
 }
 
-// Categories exactly as laid out in the site's design reference.
-// `badge` is the short word shown inside the circular tile; `category` is the caption below it.
+// Categories, each using the studio's own tile artwork (the label is baked into the art).
 export const categoryShowcase = [
-    { category: 'Autosport',   badge: 'CARS',        image: carAmgGt },
-    { category: 'Anime',       badge: 'ANIME',       image: animeOnepieceJollyroger },
-    { category: 'Sports',      badge: 'SPORTS',      image: sportsMessi },
-    { category: 'TV Series',   badge: 'MOVIES',      image: movieGodzilla },
-    { category: 'Music',       badge: 'MUSIC',       image: musicTheWeeknd },
-    { category: 'Video-Games', badge: 'GAMING',      image: gamingCodZombies },
-    { category: 'Motivate',    badge: 'GYM',         image: motivateLearnEarn },
-    { category: 'Custom',      badge: 'PERSONALIZED', image: animeOnepieceCrewSet, custom: true },
+    { category: 'Autosport',   image: catCars },
+    { category: 'Anime',       image: catAnime },
+    { category: 'Sports',      image: catSports },
+    { category: 'TV Series',   image: catMovies },
+    { category: 'Music',       image: catMusic },
+    { category: 'Video-Games', image: catGaming },
+    { category: 'Motivate',    image: catGym },
+    { category: 'Custom',      image: catPersonalized, custom: true },
 ]
 
-// Poster collage used behind the promotional banners.
+// Studio promo banners.
+export const banners = {
+    hero: bannerHero,
+    combos: bannerCombos,
+    thala: bannerThala,
+}
+
+// Poster collage used as a fallback backdrop.
 export const bannerPosters = [
     sportsDhoniCsk,
     heroSpidermanCloseup,
@@ -576,6 +604,112 @@ export const products = [
         subCategory: 'Single',
         sizes: posterSizes,
         date: 1735000000034,
+        bestseller: false
+    },
+
+    // ---------------- Latest drop ----------------
+    {
+        _id: 'sk035',
+        name: 'Thala Whistle Podu Poster',
+        description: 'MS Dhoni lifting the helmet in front of a wall of Chennai Super Kings yellow. A tribute print for every Thala fan.',
+        price: 89,
+        originalPrice: 129,
+        image: [sportsDhoniWhistle],
+        category: 'Sports',
+        subCategory: 'Single',
+        sizes: posterSizes,
+        date: 1737000000001,
+        bestseller: true
+    },
+    {
+        _id: 'sk036',
+        name: 'GTA VI Vice City Poster',
+        description: 'Grand Theft Auto VI key art — Jason and Lucia against a neon Vice City sunset. A must for any gaming setup.',
+        price: 89,
+        originalPrice: 129,
+        image: [gamingGtaVi],
+        category: 'Video-Games',
+        subCategory: 'Single',
+        sizes: posterSizes,
+        date: 1737000000002,
+        bestseller: true
+    },
+    {
+        _id: 'sk037',
+        name: 'Master (2021) Poster',
+        description: 'Minimal card-style print for the Lokesh Kanagaraj classic, complete with cast and crew credits.',
+        price: 89,
+        originalPrice: 129,
+        image: [movieMaster],
+        category: 'TV Series',
+        subCategory: 'Single',
+        sizes: posterSizes,
+        date: 1737000000003,
+        bestseller: false
+    },
+    {
+        _id: 'sk038',
+        name: 'Spider-Verse #LoveForever Poster',
+        description: 'Miles and Gwen watching the sunset over the city skyline. A soft, romantic take on the Spider-Verse.',
+        price: 89,
+        originalPrice: 129,
+        image: [heroSpiderverseLove],
+        category: 'TV Series',
+        subCategory: 'Single',
+        sizes: posterSizes,
+        date: 1737000000004,
+        bestseller: true
+    },
+    {
+        _id: 'sk039',
+        name: 'Itachi Uchiha Poster',
+        description: 'Itachi on the Akatsuki throne beneath a blood-red moon. Moody, detailed anime art.',
+        price: 89,
+        originalPrice: 129,
+        image: [animeItachi],
+        category: 'Anime',
+        subCategory: 'Single',
+        sizes: posterSizes,
+        date: 1737000000005,
+        bestseller: true
+    },
+    {
+        _id: 'sk040',
+        name: 'Thanos Kingpin Poster',
+        description: 'The Mad Titan reimagined as a crowned street king, framed by the six Infinity Stones.',
+        price: 89,
+        originalPrice: 129,
+        image: [heroThanos],
+        category: 'TV Series',
+        subCategory: 'Single',
+        sizes: posterSizes,
+        date: 1737000000006,
+        bestseller: false
+    },
+    {
+        _id: 'sk041',
+        name: 'Hip-Hop Legends Poster',
+        description: 'Dr. Dre, Snoop, Eminem, Tupac, Ice Cube and Eazy-E together in one bold vector tribute.',
+        price: 89,
+        originalPrice: 129,
+        image: [musicHiphopLegends],
+        category: 'Music',
+        subCategory: 'Single',
+        sizes: posterSizes,
+        date: 1737000000007,
+        bestseller: true
+    },
+    {
+        _id: 'sk042',
+        name: 'Leo Badass Poster',
+        description: 'A fiery, neon-lit print of Thalapathy Vijay from Leo. High-contrast colour for a statement wall.',
+        price: 89,
+        originalPrice: 129,
+        image: [movieLeoBadass],
+        category: 'TV Series',
+        subCategory: 'Single',
+        sizes: posterSizes,
+        date: 1737000000008,
         bestseller: false
     },
 

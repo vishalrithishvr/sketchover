@@ -6,6 +6,7 @@ import PageBanner from '../components/PageBanner'
 import ProductItem from '../components/ProductItem'
 import Pagination from '../components/Pagination'
 import CustomerReviews from '../components/CustomerReviews'
+import MyCustomPosters from '../components/MyCustomPosters'
 import NewsletterBox from '../components/NewsletterBox'
 import Reveal from '../components/Reveal'
 
@@ -85,6 +86,8 @@ const CustomPosters = () => {
       </div>
 
       <Pagination page={page} pageCount={pageCount} onChange={setPage} className='mt-12' />
+
+      <MyCustomPosters />
 
       <CustomerReviews />
       <NewsletterBox />

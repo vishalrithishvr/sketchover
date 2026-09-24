@@ -20,16 +20,18 @@ const MarqueeBar = ({ text = MARQUEE_TEXT }) => {
   )
 }
 
-// Angled ribbon that cuts across the page between homepage sections.
+// Angled ribbon that cuts clean across the full page width.
+// The band is over-wide (130vw) and centred so its rotated ends run past
+// both edges of the viewport instead of stopping inside the container.
 export const DiagonalRibbon = ({ text = MARQUEE_TEXT }) => {
-  const items = new Array(10).fill(text)
+  const items = new Array(14).fill(text)
 
   return (
-    <div className='relative my-14 h-16 sm:h-20 overflow-hidden' aria-hidden='true'>
-      <div className='absolute inset-x-[-8%] top-1/2 -translate-y-1/2 -rotate-[4deg] bg-black text-white py-2.5 sm:py-3 overflow-hidden whitespace-nowrap'>
-        <div className='flex w-max animate-marquee motion-reduce:animate-none text-[11px] sm:text-sm tracking-wide'>
+    <div className='relative my-16 h-20 sm:h-24 bleed-full overflow-hidden' aria-hidden='true'>
+      <div className='absolute left-1/2 top-1/2 w-[130vw] -translate-x-1/2 -translate-y-1/2 -rotate-[4deg] bg-black text-white py-3 sm:py-4 overflow-hidden whitespace-nowrap'>
+        <div className='flex w-max animate-marquee motion-reduce:animate-none text-xs sm:text-base tracking-wide'>
           {[...items, ...items].map((t, i) => (
-            <span key={i} className='px-6 flex items-center gap-2'>
+            <span key={i} className='px-7 flex items-center gap-2'>
               <span className='w-1.5 h-1.5 rounded-full bg-brand'></span>
               {t}
             </span>

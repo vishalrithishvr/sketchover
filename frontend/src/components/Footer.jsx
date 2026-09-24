@@ -18,7 +18,7 @@ const Footer = () => {
         <div className='grid grid-cols-1 sm:grid-cols-[2fr_1fr_1fr] gap-10 text-sm'>
 
           <div>
-              <Logo className='mb-5' variant='light' />
+              <Logo className='mb-5' />
               <p className='w-full md:w-3/4 text-gray-400'>
               Sketchover is a poster studio for movie, anime, car and music lovers — premium prints made to turn a blank wall into a mood board.
               </p>

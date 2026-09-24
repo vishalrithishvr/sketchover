@@ -12,7 +12,7 @@ const WHATSAPP_NUMBER = '918870333236'
 
 const PlaceOrder = () => {
 
-    const { products, cartItems, currency, getCartAmount, couponCode, shippingAddress, setCartItems, customUploads } = useContext(ShopContext)
+    const { products, cartItems, currency, getCartAmount, couponCode, shippingAddress, setCartItems, customPosters } = useContext(ShopContext)
     const { subtotal, comboDiscount, discountPct, total } = useOrderTotals()
     const navigate = useNavigate()
 
@@ -34,8 +34,8 @@ const PlaceOrder = () => {
                 if (cartItems[itemId][size] > 0) {
                     const { price } = getSizePrice(size, product.subCategory)
                     lines.push(`• ${formatProductName(product)} (Size ${size}) x${cartItems[itemId][size]} — ${currency}${price * cartItems[itemId][size]}`)
-                    if (product.isCustom && customUploads[product._id]) {
-                        lines.push(`   ↳ artwork: ${customUploads[product._id]} (will send in chat)`)
+                    if (product.isCustom && customPosters[0]) {
+                        lines.push(`   ↳ artwork: ${customPosters[0].fileName} (will send in chat)`)
                     }
                 }
             }

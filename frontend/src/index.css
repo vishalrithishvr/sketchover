@@ -46,3 +46,26 @@ a.active hr{
     scrollbar-width: none;
     -ms-overflow-style: none;
   }
+
+  /* Pull an element out of the page gutter so it sits 2cm from the viewport
+     edge. The page container padding is 5vw / 7vw / 9vw at each breakpoint. */
+  .bleed-2cm {
+    margin-left: 0;
+    margin-right: 0;
+  }
+  @media (min-width: 640px) {
+    .bleed-2cm { margin-left: calc(2cm - 5vw); margin-right: calc(2cm - 5vw); }
+  }
+  @media (min-width: 768px) {
+    .bleed-2cm { margin-left: calc(2cm - 7vw); margin-right: calc(2cm - 7vw); }
+  }
+  @media (min-width: 1024px) {
+    .bleed-2cm { margin-left: calc(2cm - 9vw); margin-right: calc(2cm - 9vw); }
+  }
+
+  /* Full viewport width, used by the slanted marquee ribbon. */
+  .bleed-full {
+    width: 100vw;
+    margin-left: 50%;
+    transform: translateX(-50%);
+  }
