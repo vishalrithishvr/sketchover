@@ -2,7 +2,7 @@ import { createContext, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import axios from 'axios'
-import { products as localProducts, getSizePrice } from '../assets/assets'
+import { products as localProducts, getSizePrice, COMBO_TIERS } from '../assets/assets'
 
 export const ShopContext = createContext();
 
@@ -191,9 +191,8 @@ const ShopContextProvider = (props) => {
         return totalAmount;
     }
 
-    // "Buy 4 Get 4 Free" — applies to Single posters only, repeats every 8 units,
-    // and discounts the cheapest eligible units first (standard combo-promo behaviour).
-    const getComboDiscount = () => {
+    // Prices of every individual Single poster unit in the basket, cheapest first.
+    const getComboUnitPrices = () => {
         const unitPrices = [];
         for (const itemId in cartItems) {
             const itemInfo = products.find((product) => product._id === itemId);
@@ -206,10 +205,21 @@ const ShopContextProvider = (props) => {
                 }
             }
         }
-        if (unitPrices.length < 8) return 0;
-        unitPrices.sort((a, b) => a - b);
-        const freeCount = Math.floor(unitPrices.length / 8) * 4;
-        return unitPrices.slice(0, freeCount).reduce((sum, p) => sum + p, 0);
+        return unitPrices.sort((a, b) => a - b);
+    }
+
+    // Best combo tier the basket currently qualifies for, or null.
+    const getActiveComboTier = () => {
+        const qty = getComboUnitPrices().length;
+        return [...COMBO_TIERS].reverse().find(tier => qty >= tier.get) || null;
+    }
+
+    // The qualifying tier's free posters come off the cheapest units.
+    const getComboDiscount = () => {
+        const unitPrices = getComboUnitPrices();
+        const tier = [...COMBO_TIERS].reverse().find(t => unitPrices.length >= t.get);
+        if (!tier) return 0;
+        return unitPrices.slice(0, tier.get - tier.buy).reduce((sum, p) => sum + p, 0);
     }
 
     const getProductsData = async () => {
@@ -261,7 +271,7 @@ const ShopContextProvider = (props) => {
         search, setSearch, showSearch, setShowSearch,
         cartItems, addToCart,setCartItems,
         getCartCount, updateQuantity,
-        getCartAmount, getComboDiscount, navigate, backendUrl,
+        getCartAmount, getComboDiscount, getActiveComboTier, navigate, backendUrl,
         setToken, token,
         wishlist, toggleWishlist,
         shippingAddress, setShippingAddress,

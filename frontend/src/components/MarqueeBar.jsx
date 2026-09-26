@@ -21,14 +21,19 @@ const MarqueeBar = ({ text = MARQUEE_TEXT }) => {
 }
 
 // Angled ribbon that cuts clean across the full page width.
-// The band is over-wide (130vw) and centred so its rotated ends run past
-// both edges of the viewport instead of stopping inside the container.
+// Angled ribbon running the full page width.
+//
+// The band is over-wide (140vw) and centred so its ends sit outside the
+// viewport. The wrapper must be tall enough to contain the *rotated* band —
+// a 3deg slant climbs ~100vw * tan(3deg) across the screen — otherwise the
+// wrapper clips the band and its own straight edges show up as the border,
+// which reads as two non-parallel lines.
 export const DiagonalRibbon = ({ text = MARQUEE_TEXT }) => {
-  const items = new Array(14).fill(text)
+  const items = new Array(16).fill(text)
 
   return (
-    <div className='relative my-16 h-20 sm:h-24 bleed-full overflow-hidden' aria-hidden='true'>
-      <div className='absolute left-1/2 top-1/2 w-[130vw] -translate-x-1/2 -translate-y-1/2 -rotate-[4deg] bg-black text-white py-3 sm:py-4 overflow-hidden whitespace-nowrap'>
+    <div className='relative my-14 h-[clamp(105px,13vw,180px)] bleed-full overflow-hidden' aria-hidden='true'>
+      <div className='absolute left-1/2 top-1/2 w-[140vw] -translate-x-1/2 -translate-y-1/2 -rotate-[3deg] bg-black text-white py-3 sm:py-4 overflow-hidden whitespace-nowrap'>
         <div className='flex w-max animate-marquee motion-reduce:animate-none text-xs sm:text-base tracking-wide'>
           {[...items, ...items].map((t, i) => (
             <span key={i} className='px-7 flex items-center gap-2'>

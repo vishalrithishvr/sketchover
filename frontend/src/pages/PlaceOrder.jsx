@@ -13,7 +13,7 @@ const WHATSAPP_NUMBER = '918870333236'
 const PlaceOrder = () => {
 
     const { products, cartItems, currency, getCartAmount, couponCode, shippingAddress, setCartItems, customPosters } = useContext(ShopContext)
-    const { subtotal, comboDiscount, discountPct, total } = useOrderTotals()
+    const { subtotal, comboDiscount, discountPct, total, comboTier } = useOrderTotals()
     const navigate = useNavigate()
 
     const blocked = subtotal === 0 || subtotal < MIN_ORDER_VALUE;
@@ -42,7 +42,7 @@ const PlaceOrder = () => {
         }
 
         lines.push('', `Subtotal: ${currency}${subtotal}`)
-        if (comboDiscount > 0) lines.push(`Combo Offer (Buy 4 Get 4 Free): -${currency}${comboDiscount}`)
+        if (comboDiscount > 0) lines.push(`Combo Offer (Buy ${comboTier?.buy} Get ${comboTier?.get}): -${currency}${comboDiscount}`)
         if (discountPct > 0) lines.push(`Discount (${couponCode.trim().toUpperCase()}): ${discountPct}%`)
         lines.push(`Total: ${currency}${total}`, '')
 

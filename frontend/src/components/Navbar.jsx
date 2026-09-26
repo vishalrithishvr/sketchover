@@ -40,7 +40,7 @@ const Navbar = () => {
     <header className='sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-100 -mx-4 sm:-mx-[5vw] md:-mx-[7vw] lg:-mx-[9vw] px-4 sm:px-[5vw] md:px-[7vw] lg:px-[9vw]'>
       <div className='flex items-center justify-between gap-6 py-3'>
 
-        <Logo />
+        <Logo id="nav-logo" />
 
         {/* Primary nav — vertically centred with the logo and search */}
         <nav className='hidden lg:block'>

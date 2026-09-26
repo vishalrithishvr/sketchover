@@ -142,6 +142,15 @@ const CUSTOM_SIZES_PRICING = { A4: SIZE_PRICING.A4, A3: SIZE_PRICING.A3 }
 // Size selected by default on product pages, and the size catalogue prices refer to.
 export const DEFAULT_SIZE = 'A4'
 
+// Combo ladder shown on product pages and applied in the cart: pay for `buy`
+// posters, take home `get`. The highest tier the basket qualifies for wins.
+export const COMBO_TIERS = [
+    { buy: 4,  get: 8,  effective: 75 },
+    { buy: 5,  get: 12, effective: 69 },
+    { buy: 7,  get: 17, effective: 61 },
+    { buy: 10, get: 30, effective: 59 },
+]
+
 export const MIN_ORDER_VALUE = 499
 
 // Every poster's name is shown with its Single/Split type wherever it's displayed.

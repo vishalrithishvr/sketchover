@@ -16,7 +16,7 @@ const LatestCollection = () => {
     },[products])
 
   return (
-    <div className='my-14 bg-neutral-950 text-white rounded-lg px-4 sm:px-7 py-8 sm:py-10'>
+    <div className='my-14 bg-neutral-950 text-white rounded-[2rem] sm:rounded-[2.5rem] px-5 sm:px-8 py-9 sm:py-11'>
 
       <Reveal className='flex items-start justify-between gap-4 mb-7'>
         <div>

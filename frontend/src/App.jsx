@@ -16,6 +16,7 @@ import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import MarqueeBar from './components/MarqueeBar'
 import WhatsappFloat from './components/WhatsappFloat'
+import LogoIntro from './components/LogoIntro'
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Verify from './pages/Verify'
@@ -23,6 +24,7 @@ import Verify from './pages/Verify'
 const App = () => {
   return (
     <div>
+      <LogoIntro />
       <ToastContainer />
       <MarqueeBar />
       <div className='px-4 sm:px-[5vw] md:px-[7vw] lg:px-[9vw]'>

@@ -6,13 +6,13 @@ import { PlusIcon, MinusIcon, ArrowRightIcon } from './icons/NavIcons'
 export const VALID_COUPONS = { SKO10: 10, SKO5: 5, WELCOME5: 5 }
 
 export const useOrderTotals = () => {
-  const { getCartAmount, getComboDiscount, couponCode } = useContext(ShopContext)
+  const { getCartAmount, getComboDiscount, getActiveComboTier, couponCode } = useContext(ShopContext)
   const subtotal = getCartAmount()
   const comboDiscount = getComboDiscount()
   const discountPct = VALID_COUPONS[couponCode.trim().toUpperCase()] || 0
   const couponDiscount = Math.round((subtotal - comboDiscount) * discountPct / 100)
   const total = Math.max(0, subtotal - comboDiscount - couponDiscount)
-  return { subtotal, comboDiscount, discountPct, couponDiscount, total }
+  return { subtotal, comboDiscount, discountPct, couponDiscount, total, comboTier: getActiveComboTier() }
 }
 
 // Bordered summary panel. `action` is a render prop so each step supplies its own
@@ -20,7 +20,7 @@ export const useOrderTotals = () => {
 const OrderSummary = ({ showItems = false, action }) => {
   const { products, cartItems, currency, updateQuantity } = useContext(ShopContext)
   const [agreed, setAgreed] = useState(false)
-  const { subtotal, comboDiscount, discountPct, total } = useOrderTotals()
+  const { subtotal, comboDiscount, discountPct, total, comboTier } = useOrderTotals()
 
   const lineItems = []
   for (const itemId in cartItems) {
@@ -65,7 +65,7 @@ const OrderSummary = ({ showItems = false, action }) => {
 
         {comboDiscount > 0 && (
           <div className='flex justify-between py-1.5 text-brand text-sm'>
-            <span>Combo (Buy 4 Get 4 Free)</span>
+            <span>Combo (Buy {comboTier?.buy} Get {comboTier?.get})</span>
             <span>-{currency}{comboDiscount}</span>
           </div>
         )}

@@ -5,6 +5,7 @@ import { getSizePrice, formatProductName, DEFAULT_SIZE } from '../assets/assets'
 import RelatedProducts from '../components/RelatedProducts';
 import LatestArrivalGrid from '../components/LatestArrivalGrid';
 import NewsletterBox from '../components/NewsletterBox';
+import ComboOffer from '../components/ComboOffer';
 import { PlusIcon, MinusIcon, UploadIcon, HeartIcon } from '../components/icons/NavIcons';
 
 const Accordion = ({ title, children }) => {
@@ -168,6 +169,8 @@ const Product = () => {
               <p>Every order is rolled (never folded) and shipped in a rigid cardboard tube so it arrives flat and crease-free.</p>
               <p>Printed and dispatched within 2-3 business days; delivery typically takes 4-7 days. Free delivery on orders from ₹399.</p>
             </Accordion>
+
+            {!productData.isCustom && <ComboOffer />}
           </div>
         </div>
       </div>
