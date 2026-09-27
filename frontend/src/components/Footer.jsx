@@ -1,6 +1,7 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 import Logo from './Logo'
+import { usePageTransition } from './PageTransition'
 import { InstagramIcon, FacebookIcon, YoutubeIcon, PinterestIcon } from './icons/NavIcons'
 
 const socialLinks = [
@@ -11,6 +12,9 @@ const socialLinks = [
 ]
 
 const Footer = () => {
+  const { openPage } = usePageTransition()
+  const open = (e, label, to) => openPage(e, { label, to })
+
   return (
     <div className='bg-black text-white mt-24'>
       <div className='px-4 sm:px-[5vw] md:px-[7vw] lg:px-[9vw] pt-16 pb-8'>
@@ -37,10 +41,10 @@ const Footer = () => {
           <div>
               <p className='font-medium mb-4 tracking-wide'>EXPLORE OUR CATEGORY</p>
               <ul className='flex flex-col gap-2 text-gray-400'>
-                  <li><Link to='/collection' className='hover:text-white'>Shop all products</Link></li>
-                  <li><Link to='/collection?sort=new' className='hover:text-white'>New Arrivals</Link></li>
-                  <li><Link to='/collection?bestseller=true' className='hover:text-white'>Best Selling</Link></li>
-                  <li><Link to='/custom-posters' className='hover:text-white'>Personalization</Link></li>
+                  <li><Link to='/collection' onClick={(e)=>open(e, 'Shop All Products', '/collection')} className='hover:text-white'>Shop all products</Link></li>
+                  <li><Link to='/collection?sort=new' onClick={(e)=>open(e, 'New Arrivals', '/collection?sort=new')} className='hover:text-white'>New Arrivals</Link></li>
+                  <li><Link to='/collection?bestseller=true' onClick={(e)=>open(e, 'Best Selling', '/collection?bestseller=true')} className='hover:text-white'>Best Selling</Link></li>
+                  <li><Link to='/custom-posters' onClick={(e)=>open(e, 'Custom Posters', '/custom-posters')} className='hover:text-white'>Personalization</Link></li>
               </ul>
           </div>
 

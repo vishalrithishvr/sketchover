@@ -4,10 +4,12 @@ import { ShopContext } from '../context/ShopContext'
 import ProductItem from './ProductItem';
 import Carousel from './Carousel';
 import Reveal from './Reveal';
+import { usePageTransition } from './PageTransition';
 
 const LatestCollection = () => {
 
     const { products } = useContext(ShopContext);
+    const { openPage } = usePageTransition();
     const [latestProducts,setLatestProducts] = useState([]);
 
     useEffect(()=>{
@@ -25,7 +27,11 @@ const LatestCollection = () => {
           </span>
           <h2 className='heading-font font-bold text-3xl sm:text-4xl lg:text-5xl tracking-[0.08em]'>NEW ARRIVALS</h2>
         </div>
-        <Link to='/collection?sort=new' className='text-sm sm:text-base font-bold text-white hover:text-brand transition-colors whitespace-nowrap mt-2'>
+        <Link
+          to='/collection?sort=new'
+          onClick={(e) => openPage(e, { label: 'New Arrivals', to: '/collection?sort=new' })}
+          className='text-sm sm:text-base font-bold text-white hover:text-brand transition-colors whitespace-nowrap mt-2'
+        >
           View all
         </Link>
       </Reveal>

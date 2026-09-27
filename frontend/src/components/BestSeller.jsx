@@ -3,11 +3,14 @@ import { Link } from 'react-router-dom'
 import { ShopContext } from '../context/ShopContext'
 import Title from './Title';
 import ProductItem from './ProductItem';
+import { usePageTransition } from './PageTransition';
 import Carousel from './Carousel';
 import Reveal from './Reveal';
 
 // "Collage Poster Kit" — the multi-panel (Split) products.
 const BestSeller = () => {
+
+    const { openPage } = usePageTransition();
 
     const {products} = useContext(ShopContext);
     const [posterSets,setPosterSets] = useState([]);
@@ -37,7 +40,11 @@ const BestSeller = () => {
       </Carousel>
 
       <div className='flex justify-center mt-6'>
-        <Link to='/collection' className='bg-black text-white text-xs px-8 py-2.5 hover:bg-brand transition-colors'>
+        <Link
+          to='/collection'
+          onClick={(e) => openPage(e, { label: 'Shop All Products', to: '/collection' })}
+          className='bg-black text-white text-xs px-8 py-2.5 hover:bg-brand transition-colors'
+        >
           View all
         </Link>
       </div>

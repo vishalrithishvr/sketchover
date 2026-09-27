@@ -21,8 +21,24 @@ const Collection = () => {
   const [sortType,setSortType] = useState(()=> searchParams.get('sort') === 'new' ? 'new' : 'relavent')
   const [page, setPage] = useState(1)
   const category = searchParams.get('category');
+  const newOnly = searchParams.get('sort') === 'new';
   const bestsellerOnly = searchParams.get('bestseller') === 'true';
   const splitsOnly = searchParams.get('type') === 'split';
+
+  // The sort lives in the URL as well as in the dropdown. Arriving here from
+  // "New arrivals" while already on a collection page does not remount the
+  // page, so the sort has to follow the address bar.
+  useEffect(()=>{
+    setSortType(newOnly ? 'new' : 'relavent')
+  },[newOnly, category, bestsellerOnly, splitsOnly])
+
+  // What this view is called, on the banner and above the grid.
+  const heading = category
+    ? category
+    : newOnly ? 'New Arrivals'
+    : bestsellerOnly ? 'Best Selling'
+    : splitsOnly ? 'Split Sets'
+    : 'Shop All Products';
 
   useEffect(()=>{
 
@@ -84,13 +100,13 @@ const Collection = () => {
           stays on New Arrivals and the Thala promo fronts the unfiltered shop. */}
       <PageBanner
         category={category || undefined}
-        image={category ? undefined : (sortType === 'new' ? banners.combos : banners.thala)}
-        title={category ? category : 'Shop All Products'}
+        image={category ? undefined : (newOnly ? banners.combos : banners.thala)}
+        title={heading}
         subtitle='Premium matte prints — A6 to A3+'
       />
 
       <div className='text-center text-xl sm:text-2xl mt-10 mb-6'>
-        <Title text1={category ? category : 'Shop All Products'} />
+        <Title text1={heading} />
       </div>
 
       {/* Filter / sort row */}

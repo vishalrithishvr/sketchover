@@ -19,13 +19,15 @@ import MarqueeBar from './components/MarqueeBar'
 import WhatsappFloat from './components/WhatsappFloat'
 import LogoIntro from './components/LogoIntro'
 import ComboProgress from './components/ComboProgress'
+import { PageTransitionProvider, ScrollToTop } from './components/PageTransition'
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Verify from './pages/Verify'
 
 const App = () => {
   return (
-    <div>
+    <PageTransitionProvider>
+      <ScrollToTop />
       <LogoIntro />
       <ToastContainer />
       <MarqueeBar />
@@ -51,7 +53,7 @@ const App = () => {
       <Footer />
       <ComboProgress />
       <WhatsappFloat />
-    </div>
+    </PageTransitionProvider>
   )
 }
 

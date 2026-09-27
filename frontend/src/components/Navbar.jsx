@@ -1,17 +1,14 @@
-import React, { useContext, useEffect, useRef, useState } from 'react'
+import React, { useContext, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { ShopContext } from '../context/ShopContext';
 import { categoryShowcase, CATEGORY_BANNERS } from '../assets/assets';
+import { usePageTransition } from './PageTransition';
 import Logo from './Logo';
 import { SearchIcon, CartIcon, MenuIcon, CloseIcon, HeartIcon, ChevronDownIcon } from './icons/NavIcons';
 
 const linkClass = ({ isActive }) =>
   `flex items-center gap-1 whitespace-nowrap transition-colors ${isActive ? 'text-black' : 'text-gray-700'} hover:text-black`
-
-// How long the curtain stays up, and when the route swaps behind it.
-const CURTAIN_MS = 850
-const NAVIGATE_AT_MS = 320
 
 // Desktop dropdown. Opens on hover, and on focus so it's keyboard reachable.
 const Dropdown = ({ to, label, children }) => (
@@ -31,10 +28,8 @@ const Dropdown = ({ to, label, children }) => (
 const Navbar = () => {
 
     const [menuOpen, setMenuOpen] = useState(false);
-    // The category being opened: drives the curtain animation and the pressed tile.
-    const [transition, setTransition] = useState(null);
-    const timers = useRef([]);
     const { search, setSearch, setShowSearch, getCartCount, wishlist } = useContext(ShopContext);
+    const { openPage, opening } = usePageTransition();
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -45,8 +40,6 @@ const Navbar = () => {
         document.body.style.overflow = menuOpen ? 'hidden' : ''
         return () => { document.body.style.overflow = '' }
     }, [menuOpen])
-
-    useEffect(() => () => timers.current.forEach(clearTimeout), [])
 
     const submitSearch = (e) => {
         e.preventDefault()
@@ -59,35 +52,13 @@ const Navbar = () => {
 
     const categoryPath = (category) => `/collection?category=${encodeURIComponent(category)}`
 
-    // Tapping a category plays a short branded curtain while the route changes,
-    // so there is always visible feedback — on a phone as much as on a desktop.
-    const openCategory = (e, category) => {
-        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return
-        e.preventDefault()
-        if (transition) return
+    // Every catalogue link opens the same way: a curtain carrying the name of
+    // the page, then the page itself, from the top.
+    const open = (e, label, to, accent) => openPage(e, { label, to, accent })
+    const openCategory = (e, category) =>
+        open(e, CATEGORY_BANNERS[category]?.headline || category, categoryPath(category), CATEGORY_BANNERS[category]?.accent)
 
-        setTransition({ category, accent: CATEGORY_BANNERS[category]?.accent || '#F5007E' })
-        timers.current.push(setTimeout(() => {
-            setMenuOpen(false)
-            navigate(categoryPath(category))
-            window.scrollTo({ top: 0 })
-        }, NAVIGATE_AT_MS))
-        timers.current.push(setTimeout(() => setTransition(null), CURTAIN_MS))
-    }
-
-    const curtain = transition && createPortal(
-      <div className='fixed inset-0 z-[95] overflow-hidden pointer-events-none' aria-hidden='true'>
-        <div
-          className='absolute inset-0 animate-curtain'
-          style={{ background: `linear-gradient(155deg, #070707 0%, #141414 45%, ${transition.accent} 100%)` }}
-        >
-          <div className='h-full flex items-center justify-center animate-label-in'>
-            <span className='block w-10 h-10 rounded-full border-2 border-white/30 border-t-white animate-spin' />
-          </div>
-        </div>
-      </div>,
-      document.body
-    )
+    const isOpening = (to) => opening?.to === to
 
     // The drawer is portalled to <body>: the header uses backdrop-blur, which
     // creates a containing block for fixed children and would otherwise trap
@@ -126,26 +97,44 @@ const Navbar = () => {
             </form>
 
             <NavLink className='py-3.5 px-6 border-b active:bg-gray-50' to='/'>Home</NavLink>
-            <NavLink className='py-3.5 px-6 border-b active:bg-gray-50' to='/collection'>Shop all products</NavLink>
+            <Link
+              to='/collection'
+              onClick={(e) => open(e, 'Shop All Products', '/collection')}
+              className={`py-3.5 px-6 border-b transition-colors ${isOpening('/collection') ? 'bg-brand/10 text-brand animate-tile-pop' : 'active:bg-gray-50'}`}
+            >
+              Shop all products
+            </Link>
             {shopCategories.map((c) => {
-              const opening = transition?.category === c.category
+              const active = isOpening(categoryPath(c.category))
               return (
                 <Link
                   key={c.category}
                   to={categoryPath(c.category)}
                   onClick={(e) => openCategory(e, c.category)}
                   className={`flex items-center gap-3 py-3 pl-8 pr-6 border-b text-sm origin-left transition-colors ${
-                    opening ? 'bg-brand/10 text-brand animate-tile-pop' : 'text-gray-500 active:bg-gray-50'
+                    active ? 'bg-brand/10 text-brand animate-tile-pop' : 'text-gray-500 active:bg-gray-50'
                   }`}
                 >
                   <img src={c.image} alt='' className='w-8 h-8 rounded-full object-cover shrink-0' />
                   <span>{c.category}</span>
-                  {opening && <span className='ml-auto w-1.5 h-1.5 rounded-full bg-brand animate-ping' />}
+                  {active && <span className='ml-auto w-1.5 h-1.5 rounded-full bg-brand animate-ping' />}
                 </Link>
               )
             })}
-            <NavLink className='py-3.5 px-6 border-b active:bg-gray-50' to='/collection?sort=new'>New arrivals</NavLink>
-            <NavLink className='py-3.5 px-6 border-b active:bg-gray-50' to='/custom-posters'>Custom Posters</NavLink>
+            <Link
+              to='/collection?sort=new'
+              onClick={(e) => open(e, 'New Arrivals', '/collection?sort=new')}
+              className={`py-3.5 px-6 border-b transition-colors ${isOpening('/collection?sort=new') ? 'bg-brand/10 text-brand animate-tile-pop' : 'active:bg-gray-50'}`}
+            >
+              New arrivals
+            </Link>
+            <Link
+              to='/custom-posters'
+              onClick={(e) => open(e, 'Custom Posters', '/custom-posters', CATEGORY_BANNERS.Custom?.accent)}
+              className={`py-3.5 px-6 border-b transition-colors ${isOpening('/custom-posters') ? 'bg-brand/10 text-brand animate-tile-pop' : 'active:bg-gray-50'}`}
+            >
+              Custom Posters
+            </Link>
             <NavLink className='py-3.5 px-6 border-b active:bg-gray-50' to='/favorites'>Favorites</NavLink>
             <NavLink className='py-3.5 px-6 border-b active:bg-gray-50' to='/cart'>Cart</NavLink>
             <NavLink className='py-3.5 px-6 border-b active:bg-gray-50' to='/about'>About</NavLink>
@@ -170,16 +159,38 @@ const Navbar = () => {
                   key={c.category}
                   to={categoryPath(c.category)}
                   onClick={(e) => openCategory(e, c.category)}
-                  className={`whitespace-nowrap transition-colors ${transition?.category === c.category ? 'text-brand' : 'hover:text-brand'}`}
+                  className={`whitespace-nowrap transition-colors ${isOpening(categoryPath(c.category)) ? 'text-brand' : 'hover:text-brand'}`}
                 >
                   {c.category}
                 </Link>
               ))}
-              <Link to='/collection' className='pt-2 mt-1 border-t border-gray-100 text-black hover:text-brand'>Shop all products</Link>
+              <Link
+                to='/collection'
+                onClick={(e) => open(e, 'Shop All Products', '/collection')}
+                className='pt-2 mt-1 border-t border-gray-100 text-black hover:text-brand'
+              >
+                Shop all products
+              </Link>
             </Dropdown>
 
-            <li><NavLink to='/collection?sort=new' className={linkClass}>New arrivals</NavLink></li>
-            <li><NavLink to='/custom-posters' className={linkClass}>Custom Posters</NavLink></li>
+            <li>
+              <NavLink
+                to='/collection?sort=new'
+                onClick={(e) => open(e, 'New Arrivals', '/collection?sort=new')}
+                className={linkClass}
+              >
+                New arrivals
+              </NavLink>
+            </li>
+            <li>
+              <NavLink
+                to='/custom-posters'
+                onClick={(e) => open(e, 'Custom Posters', '/custom-posters', CATEGORY_BANNERS.Custom?.accent)}
+                className={linkClass}
+              >
+                Custom Posters
+              </NavLink>
+            </li>
 
             <Dropdown to='/collection?category=TV Series' label='Vintage Prints'>
               <Link to={categoryPath('TV Series')} onClick={(e) => openCategory(e, 'TV Series')} className='hover:text-brand'>TV &amp; Movie Classics</Link>
@@ -225,7 +236,6 @@ const Navbar = () => {
       </div>
 
       {drawer}
-      {curtain}
     </header>
   )
 }
