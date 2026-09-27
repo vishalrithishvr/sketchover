@@ -170,7 +170,7 @@ const Product = () => {
               <p>Printed and dispatched within 2-3 business days; delivery typically takes 4-7 days. Free delivery on orders from ₹399.</p>
             </Accordion>
 
-            {!productData.isCustom && <ComboOffer />}
+            {!productData.isCustom && <ComboOffer product={productData} size={size} />}
           </div>
         </div>
       </div>

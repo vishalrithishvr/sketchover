@@ -28,6 +28,26 @@ const ShopContextProvider = (props) => {
     const [shippingAddress, setShippingAddress] = useState({})
     const [couponCode, setCouponCode] = useState('')
 
+    // Combo the shopper is working towards, picked from a product page. Drives the
+    // progress bar; the discount itself is always the best tier the basket earns.
+    const [activeCombo, setActiveCombo] = useState(() => {
+        try {
+            return JSON.parse(localStorage.getItem('activeCombo')) || null
+        } catch {
+            return null
+        }
+    })
+
+    const startCombo = (tier) => {
+        setActiveCombo(tier)
+        try { localStorage.setItem('activeCombo', JSON.stringify(tier)) } catch { /* non-critical */ }
+    }
+
+    const clearCombo = () => {
+        setActiveCombo(null)
+        try { localStorage.removeItem('activeCombo') } catch { /* non-critical */ }
+    }
+
     // Artwork the shopper uploaded for custom posters. Kept in localStorage so the
     // poster is still on the site after a refresh.
     const [customPosters, setCustomPosters] = useState(() => {
@@ -208,6 +228,9 @@ const ShopContextProvider = (props) => {
         return unitPrices.sort((a, b) => a - b);
     }
 
+    // How many combo-eligible posters are in the basket right now.
+    const getComboQty = () => getComboUnitPrices().length
+
     // Best combo tier the basket currently qualifies for, or null.
     const getActiveComboTier = () => {
         const qty = getComboUnitPrices().length;
@@ -271,7 +294,7 @@ const ShopContextProvider = (props) => {
         search, setSearch, showSearch, setShowSearch,
         cartItems, addToCart,setCartItems,
         getCartCount, updateQuantity,
-        getCartAmount, getComboDiscount, getActiveComboTier, navigate, backendUrl,
+        getCartAmount, getComboDiscount, getActiveComboTier, getComboQty, activeCombo, startCombo, clearCombo, navigate, backendUrl,
         setToken, token,
         wishlist, toggleWishlist,
         shippingAddress, setShippingAddress,

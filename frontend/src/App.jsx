@@ -17,6 +17,7 @@ import Footer from './components/Footer'
 import MarqueeBar from './components/MarqueeBar'
 import WhatsappFloat from './components/WhatsappFloat'
 import LogoIntro from './components/LogoIntro'
+import ComboProgress from './components/ComboProgress'
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Verify from './pages/Verify'
@@ -46,6 +47,7 @@ const App = () => {
         </Routes>
       </div>
       <Footer />
+      <ComboProgress />
       <WhatsappFloat />
     </div>
   )

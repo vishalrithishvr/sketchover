@@ -108,6 +108,12 @@ export const PinterestIcon = (props) => (
   </svg>
 )
 
+export const CheckIcon = (props) => (
+  <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.4' strokeLinecap='round' strokeLinejoin='round' {...props}>
+    <polyline points='4 12 10 18 20 6' />
+  </svg>
+)
+
 export const ArrowRightIcon = (props) => (
   <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.6' strokeLinecap='round' strokeLinejoin='round' {...props}>
     <line x1='3' y1='12' x2='20' y2='12' />

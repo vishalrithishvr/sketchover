@@ -2,12 +2,10 @@ import React, { useContext } from 'react'
 import { ShopContext } from '../context/ShopContext'
 import { Link } from 'react-router-dom'
 import { formatProductName, DEFAULT_SIZE } from '../assets/assets'
-import HoverPreview, { useHoverPreview } from './HoverPreview'
 
 const ProductItem = ({ product, theme = 'light' }) => {
 
     const { addToCart } = useContext(ShopContext);
-    const preview = useHoverPreview();
     const { _id: id, image, price, originalPrice, sizes, isCustom } = product;
     const isDark = theme === 'dark';
     const hasDiscount = originalPrice && originalPrice > price;
@@ -23,12 +21,8 @@ const ProductItem = ({ product, theme = 'light' }) => {
     <Link
       onClick={()=>scrollTo(0,0)}
       to={`/product/${id}`}
-      ref={preview.ref}
-      onMouseEnter={preview.onEnter}
-      onMouseLeave={preview.onLeave}
       className='group block transition-transform duration-300 hover:-translate-y-1'
     >
-      {preview.rect && <HoverPreview product={product} anchorRect={preview.rect} />}
 
       {/* Image */}
       <div className={`relative overflow-hidden aspect-[333/461] ${isDark ? 'bg-neutral-800' : 'bg-gray-100'}`}>
