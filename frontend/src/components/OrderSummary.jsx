@@ -26,7 +26,7 @@ export const useOrderTotals = () => {
 // Bordered summary panel. `action` is a render prop so each step supplies its own
 // button while the terms checkbox stays owned here.
 const OrderSummary = ({ showItems = false, action }) => {
-  const { products, cartItems, currency, updateQuantity } = useContext(ShopContext)
+  const { products, cartItems, currency, changeQuantity } = useContext(ShopContext)
   const [agreed, setAgreed] = useState(false)
   const { subtotal, comboDiscount, couponDiscount, discountPct, platformFee, total, comboTier } = useOrderTotals()
 
@@ -53,11 +53,11 @@ const OrderSummary = ({ showItems = false, action }) => {
                 <img src={product.image[0]} alt='' className='w-10 h-12 object-cover bg-gray-100 shrink-0' />
                 <p className='flex-1 min-w-0 text-[11px] leading-tight line-clamp-2'>{formatProductName(product)}</p>
                 <div className='flex items-center border border-gray-300 shrink-0'>
-                  <button onClick={()=>updateQuantity(product._id, size, Math.max(1, qty - 1))} aria-label='Decrease' className='w-6 h-6 flex items-center justify-center text-gray-500 hover:text-black'>
+                  <button onClick={()=>qty > 1 && changeQuantity(product._id, size, -1)} aria-label='Decrease' className='w-6 h-6 flex items-center justify-center text-gray-500 hover:text-black'>
                     <MinusIcon className='w-2.5 h-2.5' />
                   </button>
                   <span className='w-6 text-center text-[11px]'>{qty}</span>
-                  <button onClick={()=>updateQuantity(product._id, size, qty + 1)} aria-label='Increase' className='w-6 h-6 flex items-center justify-center text-gray-500 hover:text-black'>
+                  <button onClick={()=>changeQuantity(product._id, size, 1)} aria-label='Increase' className='w-6 h-6 flex items-center justify-center text-gray-500 hover:text-black'>
                     <PlusIcon className='w-2.5 h-2.5' />
                   </button>
                 </div>

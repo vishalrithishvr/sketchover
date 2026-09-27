@@ -2,15 +2,16 @@ import React, { useContext } from 'react'
 import { ShopContext } from '../context/ShopContext'
 import { Link } from 'react-router-dom'
 import { formatProductName, DEFAULT_SIZE } from '../assets/assets'
-import { PlusIcon, MinusIcon } from './icons/NavIcons'
+import { PlusIcon, MinusIcon, HeartIcon } from './icons/NavIcons'
 
 const ProductItem = ({ product, theme = 'light' }) => {
 
-    const { addToCart, updateQuantity, cartItems } = useContext(ShopContext);
+    const { addToCart, changeQuantity, cartItems, wishlist, toggleWishlist } = useContext(ShopContext);
     const { _id: id, image, price, originalPrice, sizes, isCustom } = product;
     const isDark = theme === 'dark';
     const hasDiscount = originalPrice && originalPrice > price;
     const displayName = formatProductName(product);
+    const isWishlisted = wishlist.includes(id);
 
     // What this poster already contributes to the basket, shown on the tile so
     // the shopper can build a combo without leaving the listing.
@@ -31,9 +32,12 @@ const ProductItem = ({ product, theme = 'light' }) => {
 
     const step = (e, delta) => {
         stop(e);
-        const current = lines[sizeInCart] || 0;
-        if (delta > 0 && current === 0) return addToCart(id, sizeInCart)
-        updateQuantity(id, sizeInCart, Math.max(0, current + delta));
+        changeQuantity(id, sizeInCart, delta);
+    }
+
+    const favourite = (e) => {
+        stop(e);
+        toggleWishlist(id);
     }
 
   return (
@@ -50,12 +54,27 @@ const ProductItem = ({ product, theme = 'light' }) => {
           src={image[0]}
           alt={displayName}
           loading='lazy'
+          decoding='async'
         />
         {(hasDiscount || isCustom) && (
           <span className='absolute top-0 right-0 bg-black text-white text-[10px] px-3 py-1'>
             {isCustom ? 'Custom' : 'Sale'}
           </span>
         )}
+
+        {/* Favourite, right on the poster */}
+        <button
+          type='button'
+          onClick={favourite}
+          aria-label={isWishlisted ? `Remove ${displayName} from favourites` : `Add ${displayName} to favourites`}
+          aria-pressed={isWishlisted}
+          className={`absolute top-2 left-2 w-9 h-9 rounded-full flex items-center justify-center shadow-sm transition-colors ${
+            isWishlisted ? 'bg-brand text-white' : 'bg-white/90 text-gray-600 hover:text-brand'
+          }`}
+        >
+          <HeartIcon filled={isWishlisted} className={`w-4 h-4 ${isWishlisted ? 'animate-pop-in' : ''}`} />
+        </button>
+
         {inCart > 0 && (
           <span className='absolute bottom-0 left-0 bg-brand text-white text-[10px] px-3 py-1 animate-pop-in'>
             {inCart} in cart
@@ -78,6 +97,7 @@ const ProductItem = ({ product, theme = 'light' }) => {
       {inCart > 0 ? (
         <div className={`mt-2 flex items-center justify-between border ${isDark ? 'border-white/30' : 'border-black'}`}>
           <button
+            type='button'
             onClick={(e) => step(e, -1)}
             aria-label={`Remove one ${displayName}`}
             className={`w-9 h-8 flex items-center justify-center transition-colors ${isDark ? 'text-white hover:text-brand' : 'text-gray-600 hover:text-brand'}`}
@@ -88,6 +108,7 @@ const ProductItem = ({ product, theme = 'light' }) => {
             {inCart} added
           </span>
           <button
+            type='button'
             onClick={(e) => step(e, 1)}
             aria-label={`Add another ${displayName}`}
             className={`w-9 h-8 flex items-center justify-center transition-colors ${isDark ? 'text-white hover:text-brand' : 'text-gray-600 hover:text-brand'}`}
@@ -97,6 +118,7 @@ const ProductItem = ({ product, theme = 'light' }) => {
         </div>
       ) : (
         <button
+          type='button'
           onClick={quickAdd}
           className={`mt-2 w-full text-[11px] sm:text-xs py-2 transition-colors ${isDark ? 'bg-white text-black hover:bg-brand hover:text-white' : 'bg-black text-white hover:bg-brand'}`}
         >
@@ -107,4 +129,6 @@ const ProductItem = ({ product, theme = 'light' }) => {
   )
 }
 
-export default ProductItem
+// The catalogue re-renders on every cart or wishlist change; tiles whose own
+// product did not change skip the work.
+export default React.memo(ProductItem)

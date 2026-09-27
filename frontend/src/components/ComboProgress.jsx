@@ -26,6 +26,9 @@ const ComboProgress = () => {
 
   const hidden = !productsLoaded || count === 0 || dismissedAt !== null || HIDDEN_ON.includes(location.pathname)
 
+  // "View cart" is the obvious next step — have its chunk ready.
+  useEffect(() => { if (!hidden) import('../pages/Cart') }, [hidden])
+
   // Keep the page clear of the bar, and lift the WhatsApp button above it.
   useEffect(() => {
     const height = hidden ? '0px' : '74px'

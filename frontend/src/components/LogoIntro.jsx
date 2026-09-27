@@ -1,28 +1,24 @@
 import React, { useEffect, useRef, useState } from 'react'
 import logoSko from '../assets/logo-sko.png'
 
-// Splash on first load: the SKO mark sits large in the middle, then flies to
-// the exact spot the navbar logo occupies and hands over to it.
+// Splash on load: the SKO mark sits large in the middle, then flies to the
+// exact spot the navbar logo occupies and hands over to it.
 //
 // The target is measured from the real navbar logo (#nav-logo) so the landing
-// always lines up, whatever the breakpoint. Runs once per tab.
+// always lines up, whatever the breakpoint. It plays on every load, including a
+// refresh, and only ever touches the overlay — the basket, favourites and saved
+// address live in localStorage and are untouched by it.
 const LogoIntro = () => {
   const [phase, setPhase] = useState('idle')   // idle -> center -> fly -> done
   const [target, setTarget] = useState(null)
   const markRef = useRef(null)
 
   useEffect(() => {
-    if (sessionStorage.getItem('skoIntroSeen')) {
-      setPhase('done')
-      return
-    }
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      sessionStorage.setItem('skoIntroSeen', '1')
       setPhase('done')
       return
     }
 
-    sessionStorage.setItem('skoIntroSeen', '1')
     document.body.style.overflow = 'hidden'
     requestAnimationFrame(() => setPhase('center'))
 
@@ -39,12 +35,12 @@ const LogoIntro = () => {
         })
       }
       setPhase('fly')
-    }, 900)
+    }, 700)
 
     const endTimer = setTimeout(() => {
       document.body.style.overflow = ''
       setPhase('done')
-    }, 2000)
+    }, 1550)
 
     return () => {
       clearTimeout(flyTimer)
@@ -68,7 +64,7 @@ const LogoIntro = () => {
         alt=''
         className='h-24 sm:h-32 w-auto object-contain will-change-transform'
         style={{
-          transition: 'transform 900ms cubic-bezier(0.65, 0, 0.35, 1), opacity 500ms ease',
+          transition: 'transform 780ms cubic-bezier(0.65, 0, 0.35, 1), opacity 450ms ease',
           transform: flying && target
             ? `translate(${target.x}px, ${target.y}px) scale(${target.scale})`
             : phase === 'center'

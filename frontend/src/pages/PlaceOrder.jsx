@@ -48,6 +48,9 @@ const PlaceOrder = () => {
 
     useEffect(() => () => clearTimeout(timer.current), [])
 
+    // Warm the confirmation page's chunk before it is needed.
+    useEffect(() => { import('./OrderPlaced') }, [])
+
     const blocked = productsLoaded && !confirming && (subtotal === 0 || total < MIN_ORDER_VALUE);
 
     useEffect(() => {

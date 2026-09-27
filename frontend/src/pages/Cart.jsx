@@ -15,7 +15,7 @@ const FIRST_TIER = COMBO_TIERS[0]
 const Cart = () => {
 
   const {
-    products, productsLoaded, cartItems, updateQuantity, navigate, currency,
+    products, productsLoaded, cartItems, updateQuantity, changeQuantity, navigate, currency,
     getComboQty, getNextComboTier, activeCombo, startCombo,
   } = useContext(ShopContext);
   const [cartData, setCartData] = useState([]);
@@ -101,11 +101,11 @@ const Cart = () => {
 
                   <div className='flex items-center justify-between gap-4 mt-5'>
                     <div className='flex items-center border border-gray-300'>
-                      <button onClick={()=>updateQuantity(item._id, item.size, Math.max(1, item.quantity - 1))} aria-label='Decrease' className='w-7 h-7 flex items-center justify-center text-gray-500 hover:text-black'>
+                      <button onClick={()=>item.quantity > 1 && changeQuantity(item._id, item.size, -1)} aria-label='Decrease' className='w-7 h-7 flex items-center justify-center text-gray-500 hover:text-black'>
                         <MinusIcon className='w-3 h-3' />
                       </button>
                       <span className='w-7 text-center text-xs'>{item.quantity}</span>
-                      <button onClick={()=>updateQuantity(item._id, item.size, item.quantity + 1)} aria-label='Increase' className='w-7 h-7 flex items-center justify-center text-gray-500 hover:text-black'>
+                      <button onClick={()=>changeQuantity(item._id, item.size, 1)} aria-label='Increase' className='w-7 h-7 flex items-center justify-center text-gray-500 hover:text-black'>
                         <PlusIcon className='w-3 h-3' />
                       </button>
                     </div>

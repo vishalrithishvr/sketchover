@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react'
+import React, { useContext, useEffect, useMemo, useState } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { ShopContext } from '../context/ShopContext'
 import { SIZES, banners } from '../assets/assets'
@@ -16,7 +16,6 @@ const Collection = () => {
 
   const { products , search , showSearch } = useContext(ShopContext);
   const [searchParams] = useSearchParams();
-  const [filterProducts,setFilterProducts] = useState([]);
   const [sizeFilter,setSizeFilter] = useState('');
   const [sortType,setSortType] = useState(()=> searchParams.get('sort') === 'new' ? 'new' : 'relavent')
   const [page, setPage] = useState(1)
@@ -40,12 +39,14 @@ const Collection = () => {
     : splitsOnly ? 'Split Sets'
     : 'Shop All Products';
 
-  useEffect(()=>{
+  // Filtering and sorting are derived, not stored: one pass, one render.
+  const filterProducts = useMemo(()=>{
 
     let productsCopy = products.filter(p => !p.isCustom);
 
     if (showSearch && search) {
-      productsCopy = productsCopy.filter(item => item.name.toLowerCase().includes(search.toLowerCase()))
+      const needle = search.toLowerCase()
+      productsCopy = productsCopy.filter(item => item.name.toLowerCase().includes(needle))
     }
 
     if (category) {
@@ -81,10 +82,14 @@ const Collection = () => {
         break;
     }
 
-    setFilterProducts(productsCopy)
-    setPage(1)
+    return productsCopy
 
   },[category, bestsellerOnly, splitsOnly, sizeFilter, sortType, search, showSearch, products])
+
+  // Any change of view starts back at page one.
+  useEffect(()=>{
+    setPage(1)
+  },[category, bestsellerOnly, splitsOnly, sizeFilter, sortType, search, showSearch])
 
   const pageCount = Math.max(1, Math.ceil(filterProducts.length / PER_PAGE))
   const visible = filterProducts.slice((page - 1) * PER_PAGE, page * PER_PAGE)
