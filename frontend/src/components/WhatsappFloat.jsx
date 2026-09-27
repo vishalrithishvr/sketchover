@@ -10,7 +10,8 @@ const WhatsappFloat = () => {
       target='_blank'
       rel='noreferrer'
       aria-label='Chat with us on WhatsApp'
-      className='fixed bottom-5 right-5 z-40 w-12 h-12 rounded-full bg-[#25D366] text-white flex items-center justify-center shadow-lg hover:scale-105 transition-transform'
+      style={{ bottom: 'calc(1.25rem + var(--cart-bar-h, 0px))' }}
+      className='fixed right-5 z-40 w-12 h-12 rounded-full bg-[#25D366] text-white flex items-center justify-center shadow-lg hover:scale-105 transition-transform'
     >
       <WhatsappIcon className='w-6 h-6' />
     </a>

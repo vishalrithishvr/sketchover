@@ -1,58 +1,91 @@
-import React, { useContext } from 'react'
+import React, { useContext, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useLocation } from 'react-router-dom'
 import { ShopContext } from '../context/ShopContext'
-import { findComboTier } from '../assets/assets'
-import { CloseIcon } from './icons/NavIcons'
+import { CloseIcon, CheckIcon } from './icons/NavIcons'
 
-// Sticky tracker for the combo the shopper picked: how many posters are in,
-// how many are left, and a way straight back to the catalogue.
+const HIDDEN_ON = ['/cart', '/shipping', '/place-order', '/order-placed']
+
+// Standing basket bar. It appears as soon as the first poster goes in and
+// follows the shopper around the catalogue: what they have picked, how close
+// the next combo is, and the way to the cart — so posters can be chosen from
+// the listing pages instead of only in the cart.
 const ComboProgress = () => {
-  const { activeCombo, clearCombo, getComboQty, currency } = useContext(ShopContext)
+  const {
+    getCartCount, getCartAmount, getComboQty, getActiveComboTier, getNextComboTier,
+    getComboDiscount, getNextComboSaving, currency, productsLoaded,
+  } = useContext(ShopContext)
   const location = useLocation()
 
-  if (!activeCombo) return null
-  // Stay out of the way during checkout.
-  if (['/cart', '/shipping', '/place-order', '/order-placed'].includes(location.pathname)) return null
+  const count = getCartCount()
+  // Dismissing hides the bar until the basket changes again.
+  const [dismissedAt, setDismissedAt] = useState(null)
+  useEffect(() => {
+    if (dismissedAt !== null && count !== dismissedAt) setDismissedAt(null)
+  }, [count, dismissedAt])
 
-  const qty = getComboQty()
-  const remaining = Math.max(0, activeCombo.get - qty)
-  const pct = Math.min(100, Math.round((qty / activeCombo.get) * 100))
-  const done = remaining === 0
-  const effective = activeCombo.effective || findComboTier(activeCombo.get)?.effective
+  const hidden = !productsLoaded || count === 0 || dismissedAt !== null || HIDDEN_ON.includes(location.pathname)
+
+  // Keep the page clear of the bar, and lift the WhatsApp button above it.
+  useEffect(() => {
+    const height = hidden ? '0px' : '74px'
+    document.documentElement.style.setProperty('--cart-bar-h', height)
+    document.body.style.paddingBottom = height
+    return () => {
+      document.documentElement.style.setProperty('--cart-bar-h', '0px')
+      document.body.style.paddingBottom = ''
+    }
+  }, [hidden])
+
+  if (hidden) return null
+
+  const posters = getComboQty()
+  const tier = getActiveComboTier()
+  const next = getNextComboTier()
+  const discount = getComboDiscount()
+  const remaining = next ? next.get - posters : 0
+  const pct = next ? Math.min(100, Math.round((posters / next.get) * 100)) : 100
+  const nextSaving = getNextComboSaving()
 
   return createPortal(
     <div className='fixed bottom-0 inset-x-0 z-[75] bg-neutral-950 text-white shadow-[0_-4px_20px_rgba(0,0,0,0.25)]'>
       <div className='h-1 bg-white/15'>
         <div
-          className={`h-full transition-all duration-500 ${done ? 'bg-green-500' : 'bg-brand'}`}
+          className={`h-full transition-all duration-500 ${discount > 0 ? 'bg-green-500' : 'bg-brand'}`}
           style={{ width: `${pct}%` }}
         />
       </div>
 
       <div className='px-4 sm:px-[5vw] lg:px-[9vw] py-2.5 flex items-center gap-3 sm:gap-5'>
         <div className='min-w-0 flex-1'>
-          <p className='text-xs sm:text-sm font-medium truncate'>
-            Buy {activeCombo.buy} &rarr; Get {activeCombo.get}
-            <span className='text-white/60 font-normal'> · {qty} of {activeCombo.get} added</span>
+          <p className='text-xs sm:text-sm font-medium truncate flex items-center gap-1.5'>
+            {discount > 0 && <CheckIcon className='w-3.5 h-3.5 text-green-400 shrink-0' />}
+            {count} {count === 1 ? 'poster' : 'posters'} in your cart
+            <span className='text-white/60 font-normal'>· {currency}{getCartAmount() - discount}</span>
           </p>
-          <p className={`text-[11px] ${done ? 'text-green-400' : 'text-white/60'}`}>
-            {done
-              ? `Combo unlocked — ${activeCombo.get - activeCombo.buy} posters free at checkout`
-              : `Pick ${remaining} more at about ₹${effective} each`}
+          <p className={`text-[11px] ${discount > 0 ? 'text-green-400' : 'text-white/60'}`}>
+            {discount > 0
+              ? `Buy ${tier.buy} Get ${tier.get} applied — ${tier.get - tier.buy} free${next ? `. Add ${remaining} more for Buy ${next.buy} Get ${next.get}.` : ''}`
+              : next
+                ? `Add ${remaining} more and ${next.get - next.buy} come free${nextSaving > 0 ? ` — about ${currency}${nextSaving} off` : ''}`
+                : 'Every combo unlocked'}
           </p>
         </div>
 
         <Link
-          to={done ? '/cart' : '/collection'}
+          to='/cart'
           className={`shrink-0 text-xs sm:text-sm px-4 sm:px-6 py-2 transition-colors ${
-            done ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-white text-black hover:bg-brand hover:text-white'
+            discount > 0 ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-white text-black hover:bg-brand hover:text-white'
           }`}
         >
-          {done ? 'View cart' : 'Add posters'}
+          View cart
         </Link>
 
-        <button onClick={clearCombo} aria-label='Cancel combo' className='shrink-0 p-2 -mr-2 text-white/50 hover:text-white'>
+        <button
+          onClick={() => setDismissedAt(count)}
+          aria-label='Hide basket bar'
+          className='shrink-0 p-2 -mr-2 text-white/50 hover:text-white'
+        >
           <CloseIcon className='w-4 h-4' />
         </button>
       </div>

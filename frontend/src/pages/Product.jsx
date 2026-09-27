@@ -25,7 +25,7 @@ const Accordion = ({ title, children }) => {
 const Product = () => {
 
   const { productId } = useParams();
-  const { products, addToCart, wishlist, toggleWishlist } = useContext(ShopContext);
+  const { products, addToCart, cartItems, wishlist, toggleWishlist } = useContext(ShopContext);
   const [productData, setProductData] = useState(false);
   const [image, setImage] = useState('')
   const [size,setSize] = useState('')
@@ -46,6 +46,9 @@ const Product = () => {
   const { price, originalPrice } = getSizePrice(size || DEFAULT_SIZE, productData.subCategory);
   const hasDiscount = originalPrice > price;
   const isWishlisted = wishlist.includes(productData._id)
+  // Everything of this poster already in the basket, by size.
+  const cartLines = Object.entries(cartItems[productData._id] || {}).filter(([, qty]) => qty > 0)
+  const inCart = cartLines.reduce((sum, [, qty]) => sum + qty, 0)
 
   return (
     <div className='pt-8'>
@@ -133,6 +136,15 @@ const Product = () => {
           >
             Add to cart
           </button>
+
+          {inCart > 0 && (
+            <p className='text-xs text-gray-600 mt-2 animate-pop-in'>
+              <span className='text-brand'>{inCart} in your cart</span>
+              <span className='text-gray-400'> ({cartLines.map(([s, q]) => `${q} × ${s}`).join(', ')})</span>
+              {' — '}
+              <Link to='/cart' className='underline hover:text-black'>view cart</Link>
+            </p>
+          )}
 
           {/* Accordions */}
           <div className='mt-8'>
