@@ -7,18 +7,19 @@ import CheckoutSteps from '../components/CheckoutSteps';
 import OrderSummary, { CouponBox, useOrderTotals } from '../components/OrderSummary';
 import ProductItem from '../components/ProductItem';
 import NewsletterBox from '../components/NewsletterBox';
-import { PlusIcon, MinusIcon, CloseIcon, CheckIcon, OfferIcon } from '../components/icons/NavIcons';
+import ComboGuide from '../components/ComboGuide';
+import { PlusIcon, MinusIcon, CloseIcon } from '../components/icons/NavIcons';
 
 const FIRST_TIER = COMBO_TIERS[0]
 
 const Cart = () => {
 
   const {
-    products, cartItems, updateQuantity, navigate, currency,
+    products, productsLoaded, cartItems, updateQuantity, navigate, currency,
     getComboQty, getNextComboTier, activeCombo, startCombo,
   } = useContext(ShopContext);
   const [cartData, setCartData] = useState([]);
-  const { subtotal, comboDiscount, total, comboTier } = useOrderTotals();
+  const { subtotal, total } = useOrderTotals();
 
   useEffect(() => {
     const tempData = [];
@@ -55,7 +56,9 @@ const Cart = () => {
         <Title text1={'SHOPPING CART'} />
       </div>
 
-      {cartData.length === 0 ? (
+      {!productsLoaded ? (
+        <div className='py-16' />
+      ) : cartData.length === 0 ? (
         <div className='text-center py-16'>
           <p className='text-gray-500 mb-4'>Your cart is empty.</p>
           <Link to='/collection' className='inline-block bg-black text-white text-sm px-7 py-3 hover:bg-brand transition-colors'>Continue Shopping</Link>
@@ -66,33 +69,7 @@ const Cart = () => {
         {/* Items */}
         <div>
 
-          {/* Combo status — applied automatically, or how far off it is. */}
-          {comboDiscount > 0 ? (
-            <div className='flex items-start gap-3 border border-green-600 bg-green-50 px-4 py-3 mb-6'>
-              <CheckIcon className='w-4 h-4 text-green-700 mt-0.5 shrink-0' />
-              <div className='text-sm'>
-                <p className='text-green-800 font-medium'>
-                  Combo applied automatically — Buy {comboTier.buy} Get {comboTier.get}
-                </p>
-                <p className='text-green-700/80 text-xs mt-0.5'>
-                  {comboTier.get - comboTier.buy} posters free, {currency}{comboDiscount} off this cart.
-                  {nextTier && ` Add ${nextTier.get - comboQty} more for Buy ${nextTier.buy} Get ${nextTier.get}.`}
-                </p>
-              </div>
-            </div>
-          ) : comboQty >= FIRST_TIER.buy && nextTier ? (
-            <div className='flex items-start gap-3 border border-brand bg-brand/5 px-4 py-3 mb-6'>
-              <OfferIcon className='w-4 h-4 text-brand mt-0.5 shrink-0' />
-              <div className='text-sm flex-1'>
-                <p className='text-brand font-medium'>
-                  {comboQty} posters in — add {nextTier.get - comboQty} more and {nextTier.get - nextTier.buy} come free
-                </p>
-                <p className='text-gray-500 text-xs mt-0.5'>
-                  Buy {nextTier.buy} Get {nextTier.get} applies here the moment you qualify. <Link to='/collection' className='underline hover:text-brand'>Add posters</Link>
-                </p>
-              </div>
-            </div>
-          ) : null}
+          <ComboGuide />
 
           {cartData.map((item, index) => {
             const productData = products.find((product) => product._id === item._id);
@@ -179,9 +156,16 @@ const Cart = () => {
 
       {suggestions.length > 0 && (
         <div className='mt-20'>
-          <div className='text-xl sm:text-2xl mb-7'>
-            <Title text1={'YOU MAY ALSO LIKE'} />
+          <div className='text-xl sm:text-2xl mb-2'>
+            <Title text1={nextTier && cartData.length > 0
+              ? `ADD ${nextTier.get - comboQty} MORE FOR BUY ${nextTier.buy} GET ${nextTier.get}`
+              : 'YOU MAY ALSO LIKE'} />
           </div>
+          {nextTier && cartData.length > 0 && (
+            <p className='text-xs sm:text-sm text-gray-500 mb-6'>
+              Every poster counts towards the combo — {nextTier.get - nextTier.buy} of them come free once you reach {nextTier.get}.
+            </p>
+          )}
           <div className='grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-8'>
             {suggestions.map(p => <ProductItem key={p._id} product={p} />)}
           </div>

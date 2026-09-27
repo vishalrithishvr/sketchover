@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useRef, useState } from 'react'
+import React, { useContext, useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { ShopContext } from '../context/ShopContext';
 import { getSizePrice, formatProductName, DEFAULT_SIZE } from '../assets/assets';
@@ -6,7 +6,8 @@ import RelatedProducts from '../components/RelatedProducts';
 import LatestArrivalGrid from '../components/LatestArrivalGrid';
 import NewsletterBox from '../components/NewsletterBox';
 import ComboOffer from '../components/ComboOffer';
-import { PlusIcon, MinusIcon, UploadIcon, HeartIcon } from '../components/icons/NavIcons';
+import CustomPosterSender from '../components/CustomPosterSender';
+import { PlusIcon, MinusIcon, HeartIcon } from '../components/icons/NavIcons';
 
 const Accordion = ({ title, children }) => {
   const [open, setOpen] = useState(false)
@@ -24,12 +25,11 @@ const Accordion = ({ title, children }) => {
 const Product = () => {
 
   const { productId } = useParams();
-  const { products, addToCart, customPosters, addCustomPoster, wishlist, toggleWishlist } = useContext(ShopContext);
+  const { products, addToCart, wishlist, toggleWishlist } = useContext(ShopContext);
   const [productData, setProductData] = useState(false);
   const [image, setImage] = useState('')
   const [size,setSize] = useState('')
   const [quantity, setQuantity] = useState(1)
-  const fileRef = useRef(null)
 
   useEffect(() => {
     const found = products.find(item => item._id === productId)
@@ -46,14 +46,6 @@ const Product = () => {
   const { price, originalPrice } = getSizePrice(size || DEFAULT_SIZE, productData.subCategory);
   const hasDiscount = originalPrice > price;
   const isWishlisted = wishlist.includes(productData._id)
-  // Most recently uploaded artwork, shown as a preview on the custom product.
-  const latestUpload = customPosters[0]
-
-  const onUpload = async (e) => {
-    const file = e.target.files?.[0]
-    if (file) await addCustomPoster(file, size)
-    e.target.value = ''
-  }
 
   return (
     <div className='pt-8'>
@@ -128,26 +120,10 @@ const Product = () => {
             </button>
           </div>
 
-          {/* Custom upload */}
+          {/* Custom artwork goes straight to the studio on WhatsApp. */}
           {productData.isCustom && (
             <div className='mt-6'>
-              <input ref={fileRef} type='file' accept='image/*' hidden onChange={onUpload} />
-              <button
-                onClick={()=>fileRef.current?.click()}
-                className='w-full bg-black text-white py-3 text-sm flex items-center justify-center gap-2 hover:bg-brand transition-colors'
-              >
-                <UploadIcon className='w-4 h-4' />
-                Upload Image
-              </button>
-              {latestUpload && (
-                <div className='flex items-center gap-3 mt-3 border border-gray-200 p-2'>
-                  <img src={latestUpload.dataUrl} alt='' className='w-12 h-14 object-cover bg-gray-100 shrink-0' />
-                  <div className='min-w-0 text-xs'>
-                    <p className='truncate text-gray-700'>{latestUpload.fileName}</p>
-                    <Link to='/custom-posters' className='text-brand hover:underline'>Saved — view your custom posters</Link>
-                  </div>
-                </div>
-              )}
+              <CustomPosterSender defaultSize={size} compact />
             </div>
           )}
 

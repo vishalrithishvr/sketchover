@@ -6,6 +6,22 @@ import { products as localProducts, getSizePrice, COMBO_TIERS } from '../assets/
 
 export const ShopContext = createContext();
 
+// Everything the shopper has in progress is mirrored to localStorage, so a
+// refresh (or coming back tomorrow) picks up exactly where they left off
+// instead of dropping them on an empty default page.
+const readStored = (key, fallback) => {
+    try {
+        const raw = localStorage.getItem(key)
+        return raw === null ? fallback : (JSON.parse(raw) ?? fallback)
+    } catch {
+        return fallback
+    }
+}
+
+const writeStored = (key, value) => {
+    try { localStorage.setItem(key, JSON.stringify(value)) } catch { /* private mode / quota — not critical */ }
+}
+
 const ShopContextProvider = (props) => {
 
     const currency = '₹';
@@ -13,49 +29,38 @@ const ShopContextProvider = (props) => {
     const backendUrl = import.meta.env.VITE_BACKEND_URL
     const [search, setSearch] = useState('');
     const [showSearch, setShowSearch] = useState(false);
-    const [cartItems, setCartItems] = useState({});
+    const [cartItems, setCartItems] = useState(() => readStored('cartItems', {}));
     const [products, setProducts] = useState([]);
+    const [productsLoaded, setProductsLoaded] = useState(false);
     const [token, setToken] = useState('')
-    const [wishlist, setWishlist] = useState(() => {
-        try {
-            return JSON.parse(localStorage.getItem('wishlist')) || []
-        } catch {
-            return []
-        }
-    })
+    const [wishlist, setWishlist] = useState(() => readStored('wishlist', []))
     const navigate = useNavigate();
 
-    const [shippingAddress, setShippingAddress] = useState({})
-    const [couponCode, setCouponCode] = useState('')
+    const [shippingAddress, setShippingAddress] = useState(() => readStored('shippingAddress', {}))
+    const [couponCode, setCouponCode] = useState(() => readStored('couponCode', ''))
 
-    // The order just placed, kept in localStorage so the confirmation page
-    // survives a refresh (and the WhatsApp round-trip on mobile).
-    const [lastOrder, setLastOrder] = useState(() => {
-        try {
-            return JSON.parse(localStorage.getItem('lastOrder')) || null
-        } catch {
-            return null
-        }
-    })
+    // Autosave. Each of these is small, so writing on every change is cheap.
+    useEffect(() => { writeStored('cartItems', cartItems) }, [cartItems])
+    useEffect(() => { writeStored('shippingAddress', shippingAddress) }, [shippingAddress])
+    useEffect(() => { writeStored('couponCode', couponCode) }, [couponCode])
+    useEffect(() => { writeStored('wishlist', wishlist) }, [wishlist])
+
+    // The order just placed, kept so the confirmation page survives a refresh.
+    const [lastOrder, setLastOrder] = useState(() => readStored('lastOrder', null))
 
     const saveOrder = (order) => {
         setLastOrder(order)
-        try { localStorage.setItem('lastOrder', JSON.stringify(order)) } catch { /* non-critical */ }
+        writeStored('lastOrder', order)
     }
 
-    // Combo the shopper is working towards, picked from a product page. Drives the
-    // progress bar; the discount itself is always the best tier the basket earns.
-    const [activeCombo, setActiveCombo] = useState(() => {
-        try {
-            return JSON.parse(localStorage.getItem('activeCombo')) || null
-        } catch {
-            return null
-        }
-    })
+    // Combo the shopper is working towards, picked from a product page or armed
+    // by the cart. Drives the progress bar; the discount itself is always the
+    // best tier the basket earns.
+    const [activeCombo, setActiveCombo] = useState(() => readStored('activeCombo', null))
 
     const startCombo = (tier) => {
         setActiveCombo(tier)
-        try { localStorage.setItem('activeCombo', JSON.stringify(tier)) } catch { /* non-critical */ }
+        writeStored('activeCombo', tier)
     }
 
     const clearCombo = () => {
@@ -63,75 +68,8 @@ const ShopContextProvider = (props) => {
         try { localStorage.removeItem('activeCombo') } catch { /* non-critical */ }
     }
 
-    // Artwork the shopper uploaded for custom posters. Kept in localStorage so the
-    // poster is still on the site after a refresh.
-    const [customPosters, setCustomPosters] = useState(() => {
-        try {
-            return JSON.parse(localStorage.getItem('customPosters')) || []
-        } catch {
-            return []
-        }
-    })
-
-    const persistCustomPosters = (next) => {
-        setCustomPosters(next)
-        try {
-            localStorage.setItem('customPosters', JSON.stringify(next))
-        } catch {
-            // Storage full — keep it in memory for this session rather than failing the upload.
-            toast.info('Poster added for this session only (browser storage is full).')
-        }
-    }
-
-    // Downscale before storing: full-resolution photos blow past the localStorage quota.
-    const readScaledImage = (file, maxEdge = 900) => new Promise((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onerror = () => reject(new Error('Could not read that file.'))
-        reader.onload = () => {
-            const img = new Image()
-            img.onerror = () => reject(new Error('That file is not a readable image.'))
-            img.onload = () => {
-                const scale = Math.min(1, maxEdge / Math.max(img.width, img.height))
-                const canvas = document.createElement('canvas')
-                canvas.width = Math.round(img.width * scale)
-                canvas.height = Math.round(img.height * scale)
-                canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height)
-                resolve(canvas.toDataURL('image/jpeg', 0.82))
-            }
-            img.src = reader.result
-        }
-        reader.readAsDataURL(file)
-    })
-
-    const addCustomPoster = async (file, size) => {
-        try {
-            const dataUrl = await readScaledImage(file)
-            const poster = {
-                id: `cp_${Date.now()}`,
-                fileName: file.name,
-                dataUrl,
-                size,
-                createdAt: Date.now(),
-            }
-            persistCustomPosters([poster, ...customPosters])
-            toast.success('Custom poster saved to your collection.')
-            return poster
-        } catch (error) {
-            toast.error(error.message || 'Upload failed.')
-            return null
-        }
-    }
-
-    const removeCustomPoster = (id) => {
-        persistCustomPosters(customPosters.filter(p => p.id !== id))
-    }
-
     const toggleWishlist = (itemId) => {
-        setWishlist(prev => {
-            const next = prev.includes(itemId) ? prev.filter(id => id !== itemId) : [...prev, itemId]
-            localStorage.setItem('wishlist', JSON.stringify(next))
-            return next
-        })
+        setWishlist(prev => prev.includes(itemId) ? prev.filter(id => id !== itemId) : [...prev, itemId])
     }
 
 
@@ -263,6 +201,18 @@ const ShopContextProvider = (props) => {
         return unitPrices.slice(0, tier.get - tier.buy).reduce((sum, p) => sum + p, 0);
     }
 
+    // What the next rung would take off the bill, used as the carrot in the cart.
+    // Posters still to be added are costed at the cheapest one already in the basket.
+    const getNextComboSaving = () => {
+        const tier = getNextComboTier()
+        if (!tier) return 0
+        const unitPrices = getComboUnitPrices()
+        const cheapest = unitPrices[0] || 0
+        const padded = [...unitPrices, ...Array(Math.max(0, tier.get - unitPrices.length)).fill(cheapest)]
+            .sort((a, b) => a - b)
+        return padded.slice(0, tier.get - tier.buy).reduce((sum, p) => sum + p, 0)
+    }
+
     const getProductsData = async () => {
         try {
 
@@ -277,12 +227,14 @@ const ShopContextProvider = (props) => {
             // Backend isn't reachable yet — fall back to the local catalogue so the storefront still works.
             console.log(error)
             setProducts(localProducts)
+        } finally {
+            setProductsLoaded(true)
         }
     }
 
     const getUserCart = async ( token ) => {
         try {
-            
+
             const response = await axios.post(backendUrl + '/api/cart/get',{},{headers:{token}})
             if (response.data.success) {
                 setCartItems(response.data.cartData)
@@ -308,17 +260,17 @@ const ShopContextProvider = (props) => {
     }, [token])
 
     const value = {
-        products, currency, delivery_fee,
+        products, productsLoaded, currency, delivery_fee,
         search, setSearch, showSearch, setShowSearch,
         cartItems, addToCart,setCartItems,
         getCartCount, updateQuantity,
-        getCartAmount, getComboDiscount, getActiveComboTier, getNextComboTier, getComboQty, activeCombo, startCombo, clearCombo, navigate, backendUrl,
+        getCartAmount, getComboDiscount, getActiveComboTier, getNextComboTier, getNextComboSaving,
+        getComboQty, activeCombo, startCombo, clearCombo, navigate, backendUrl,
         setToken, token,
         wishlist, toggleWishlist,
         shippingAddress, setShippingAddress,
         couponCode, setCouponCode,
         lastOrder, saveOrder,
-        customPosters, addCustomPoster, removeCustomPoster
     }
 
     return (

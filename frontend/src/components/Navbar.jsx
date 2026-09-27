@@ -81,11 +81,8 @@ const Navbar = () => {
           className='absolute inset-0 animate-curtain'
           style={{ background: `linear-gradient(155deg, #070707 0%, #141414 45%, ${transition.accent} 100%)` }}
         >
-          <div className='h-full flex flex-col items-center justify-center gap-2 px-6 animate-label-in'>
-            <span className='text-white/60 text-[10px] sm:text-[11px] tracking-[0.34em] uppercase'>Opening</span>
-            <span className='heading-font uppercase text-white leading-none text-[clamp(2rem,9vw,5rem)] text-center'>
-              {CATEGORY_BANNERS[transition.category]?.headline || transition.category}
-            </span>
+          <div className='h-full flex items-center justify-center animate-label-in'>
+            <span className='block w-10 h-10 rounded-full border-2 border-white/30 border-t-white animate-spin' />
           </div>
         </div>
       </div>,

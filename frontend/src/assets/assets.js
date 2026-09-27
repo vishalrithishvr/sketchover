@@ -142,27 +142,24 @@ const CUSTOM_SIZES_PRICING = { A4: SIZE_PRICING.A4, A3: SIZE_PRICING.A3 }
 // Size selected by default on product pages, and the size catalogue prices refer to.
 export const DEFAULT_SIZE = 'A4'
 
-// Combo ladder shown on product pages and applied in the cart: pay for `buy`
-// posters, take home `get`. The highest tier the basket qualifies for wins.
+// Combo ladder, taken straight from the Product Description PDF: pay for `buy`
+// posters, take home `get`, with `effective` the per-poster figure the studio
+// advertises on each tile. The highest tier the basket qualifies for wins.
 export const COMBO_TIERS = [
-    { buy: 4,  get: 8  },
-    { buy: 5,  get: 12 },
-    { buy: 7,  get: 17 },
-    { buy: 10, get: 30 },
+    { buy: 4,  get: 8,  effective: 75 },
+    { buy: 5,  get: 12, effective: 69 },
+    { buy: 7,  get: 17, effective: 61 },
+    { buy: 10, get: 30, effective: 59 },
 ]
 
-// A qualifying combo lands at ₹356 plus a flat ₹4 platform fee = ₹360,
-// which is also the minimum an order has to reach before it can be placed.
-export const PLATFORM_FEE = 4
-export const MIN_ORDER_VALUE = 360
+// Look a tier back up by its `get` count — an activeCombo saved by an older
+// build may be missing the newer fields.
+export const findComboTier = (get) => COMBO_TIERS.find(tier => tier.get === get) || null
 
-// Effective per-poster price of a tier at a given size: you pay for `buy`
-// posters and take home `get`, so the advertised figure has to be derived from
-// the real size price rather than hard-coded.
-export const getComboEffectivePrice = (tier, size = DEFAULT_SIZE) => {
-    const base = SIZE_PRICING[size] || SIZE_PRICING[DEFAULT_SIZE]
-    return Math.round((base.price * tier.buy) / tier.get)
-}
+// Every order carries a flat ₹4 platform fee, and has to reach ₹400 in total
+// before it can be placed.
+export const PLATFORM_FEE = 4
+export const MIN_ORDER_VALUE = 400
 
 // Every poster's name is shown with its Single/Split type wherever it's displayed.
 export const formatProductName = (product) =>

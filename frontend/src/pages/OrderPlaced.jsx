@@ -43,17 +43,22 @@ const OrderPlaced = () => {
     <div>
       {/* Success header */}
       <div className='text-center pt-12 pb-10'>
-        <span className='inline-flex w-14 h-14 items-center justify-center rounded-full bg-green-600 text-white mb-5'>
-          <CheckIcon className='w-7 h-7' />
-        </span>
-        <div className='text-xl sm:text-2xl'>
-          <Title text1={'ORDER PLACED'} />
+        <div className='relative inline-flex mb-5'>
+          <span className='absolute inset-0 rounded-full bg-green-500 animate-ring-out' aria-hidden='true' />
+          <span className='relative inline-flex w-16 h-16 items-center justify-center rounded-full bg-green-600 animate-pop-in'>
+            <svg viewBox='0 0 24 24' className='w-8 h-8' fill='none' stroke='white' strokeWidth='2.6' strokeLinecap='round' strokeLinejoin='round'>
+              <polyline className='animate-draw-check' points='4 12 10 18 20 6' />
+            </svg>
+          </span>
+        </div>
+        <div className='text-xl sm:text-2xl animate-rise-in'>
+          <Title text1={'ORDER CONFIRMED'} />
         </div>
         <p className='text-sm text-gray-500 mt-4'>
           Order reference <span className='text-black font-medium'>{reference}</span> · placed {formatDate(placedAt)}
         </p>
         <p className='text-sm text-gray-500 mt-2 max-w-lg mx-auto'>
-          We have opened WhatsApp with your order details. Send that message to confirm the order and receive the payment link.
+          Your order is saved on this page. Send it to us on WhatsApp and we will share the payment link and start printing.
         </p>
         {whatsappUrl && (
           <a
@@ -63,14 +68,14 @@ const OrderPlaced = () => {
             className='inline-flex items-center gap-2 bg-whatsapp text-white text-sm px-6 py-3 mt-5 hover:opacity-90 transition-opacity'
           >
             <WhatsappIcon className='w-4 h-4' />
-            Re-open WhatsApp message
+            Send order on WhatsApp
           </a>
         )}
       </div>
 
       <div className='grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-10 lg:gap-16'>
 
-        <div className='flex flex-col gap-8'>
+        <div className='flex flex-col gap-8 animate-rise-in' style={{ animationDelay: '120ms' }}>
 
           {/* Delivery estimate */}
           <div className='border border-black'>
@@ -121,7 +126,7 @@ const OrderPlaced = () => {
         </div>
 
         {/* Order summary snapshot */}
-        <div className='border border-black p-5 h-fit'>
+        <div className='border border-black p-5 h-fit animate-rise-in' style={{ animationDelay: '220ms' }}>
           <p className='text-lg mb-4'>Order Summary</p>
 
           <div className='flex flex-col gap-3 mb-5'>

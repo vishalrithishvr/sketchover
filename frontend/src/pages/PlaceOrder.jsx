@@ -1,4 +1,5 @@
-import React, { useContext, useEffect } from 'react'
+import React, { useContext, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate, Link } from 'react-router-dom'
 import Title from '../components/Title'
 import CheckoutSteps from '../components/CheckoutSteps'
@@ -20,19 +21,40 @@ const makeReference = () => {
     return `SKO-${stamp}-${tail}`
 }
 
+// Plays while the order is being written down, before the confirmation page.
+const ConfirmingOverlay = () => createPortal(
+    <div className='fixed inset-0 z-[95] bg-neutral-950/95 flex flex-col items-center justify-center animate-fade-in' role='status'>
+        <div className='relative'>
+            <span className='absolute inset-0 rounded-full bg-green-500 animate-ring-out' aria-hidden='true' />
+            <span className='relative flex w-20 h-20 items-center justify-center rounded-full bg-green-600 animate-pop-in'>
+                <svg viewBox='0 0 24 24' className='w-9 h-9' fill='none' stroke='white' strokeWidth='2.6' strokeLinecap='round' strokeLinejoin='round'>
+                    <polyline className='animate-draw-check' points='4 12 10 18 20 6' />
+                </svg>
+            </span>
+        </div>
+        <p className='heading-font uppercase tracking-[0.12em] text-white text-2xl mt-7'>Order confirmed</p>
+        <p className='text-white/60 text-sm mt-1.5'>Writing up your order details…</p>
+    </div>,
+    document.body
+)
+
 const PlaceOrder = () => {
 
-    const { products, cartItems, currency, couponCode, shippingAddress, setCartItems, customPosters, saveOrder, clearCombo } = useContext(ShopContext)
+    const { products, productsLoaded, cartItems, currency, couponCode, shippingAddress, setCartItems, saveOrder, clearCombo } = useContext(ShopContext)
     const { subtotal, comboDiscount, discountPct, couponDiscount, platformFee, total, comboTier } = useOrderTotals()
     const navigate = useNavigate()
+    const [confirming, setConfirming] = useState(false)
+    const timer = useRef(null)
 
-    const blocked = subtotal === 0 || total < MIN_ORDER_VALUE;
+    useEffect(() => () => clearTimeout(timer.current), [])
+
+    const blocked = productsLoaded && !confirming && (subtotal === 0 || total < MIN_ORDER_VALUE);
 
     useEffect(() => {
         if (blocked) navigate('/cart')
     }, [blocked])
 
-    if (blocked) return null
+    if (blocked || !productsLoaded) return null
 
     // City and district are frequently the same place — say it once.
     const addressLine = [...new Set([shippingAddress.city, shippingAddress.district, shippingAddress.state, shippingAddress.postalCode].filter(Boolean))].join(', ')
@@ -69,8 +91,8 @@ const PlaceOrder = () => {
 
         lineItems.forEach(item => {
             lines.push(`• ${item.name} (Size ${item.size}) x${item.quantity} — ${currency}${item.lineTotal}`)
-            if (item.isCustom && customPosters[0]) {
-                lines.push(`   ↳ artwork: ${customPosters[0].fileName} (will send in chat)`)
+            if (item.isCustom) {
+                lines.push('   ↳ artwork: sending the image in this chat')
             }
         })
 
@@ -92,13 +114,16 @@ const PlaceOrder = () => {
         return lines.join('\n')
     }
 
-    const checkoutOnWhatsapp = () => {
+    // The order is confirmed here on the site: we record it, play the
+    // confirmation animation, then hand the shopper to the confirmation page.
+    // WhatsApp is opened from there, by a tap of their own, so no popup blocker
+    // can swallow it.
+    const confirmOrder = () => {
+        if (confirming) return
         const reference = makeReference()
         const lineItems = collectLineItems()
         const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(buildWhatsappMessage(reference, lineItems))}`
 
-        // Snapshot the order before the cart is emptied — the confirmation page
-        // reads this, and it survives a refresh.
         saveOrder({
             reference,
             placedAt: Date.now(),
@@ -112,10 +137,12 @@ const PlaceOrder = () => {
             },
         })
 
-        window.open(whatsappUrl, '_blank')
-        setCartItems({})
-        clearCombo()
-        navigate('/order-placed')
+        setConfirming(true)
+        timer.current = setTimeout(() => {
+            setCartItems({})
+            clearCombo()
+            navigate('/order-placed')
+        }, 1600)
     }
 
     return (
@@ -160,11 +187,11 @@ const PlaceOrder = () => {
                         showItems
                         action={({ agreed }) => (
                             <button
-                                onClick={checkoutOnWhatsapp}
-                                disabled={!agreed}
-                                className='w-full bg-whatsapp text-white py-3.5 hover:opacity-90 transition-opacity disabled:bg-gray-400 disabled:cursor-not-allowed'
+                                onClick={confirmOrder}
+                                disabled={!agreed || confirming}
+                                className='w-full bg-black text-white py-3.5 hover:bg-brand transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed'
                             >
-                                Checkout On Whatsapp
+                                {confirming ? 'Confirming…' : 'Confirm Order'}
                             </button>
                         )}
                     />
@@ -172,6 +199,8 @@ const PlaceOrder = () => {
             </div>
 
             <NewsletterBox />
+
+            {confirming && <ConfirmingOverlay />}
         </div>
     )
 }
