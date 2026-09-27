@@ -2,6 +2,7 @@ import React, { useContext } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useLocation } from 'react-router-dom'
 import { ShopContext } from '../context/ShopContext'
+import { getComboEffectivePrice } from '../assets/assets'
 import { CloseIcon } from './icons/NavIcons'
 
 // Sticky tracker for the combo the shopper picked: how many posters are in,
@@ -12,7 +13,7 @@ const ComboProgress = () => {
 
   if (!activeCombo) return null
   // Stay out of the way during checkout.
-  if (['/cart', '/shipping', '/place-order'].includes(location.pathname)) return null
+  if (['/cart', '/shipping', '/place-order', '/order-placed'].includes(location.pathname)) return null
 
   const qty = getComboQty()
   const remaining = Math.max(0, activeCombo.get - qty)
@@ -37,7 +38,7 @@ const ComboProgress = () => {
           <p className={`text-[11px] ${done ? 'text-green-400' : 'text-white/60'}`}>
             {done
               ? `Combo unlocked — ${activeCombo.get - activeCombo.buy} posters free at checkout`
-              : `Pick ${remaining} more at about ₹${activeCombo.effective} each`}
+              : `Pick ${remaining} more at about ₹${getComboEffectivePrice(activeCombo)} each`}
           </p>
         </div>
 

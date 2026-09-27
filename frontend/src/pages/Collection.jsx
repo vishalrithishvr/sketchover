@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useState } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { ShopContext } from '../context/ShopContext'
-import { SIZES } from '../assets/assets'
+import { SIZES, banners } from '../assets/assets'
 import Title from '../components/Title';
 import ProductItem from '../components/ProductItem';
 import Pagination from '../components/Pagination';
@@ -80,7 +80,14 @@ const Collection = () => {
 
   return (
     <div>
-      <PageBanner title={category ? category : 'Shop All Products'} subtitle='Premium matte prints — A6 to A3+' />
+      {/* Each category opens with its own collage; the studio's combo banner
+          stays on New Arrivals and the Thala promo fronts the unfiltered shop. */}
+      <PageBanner
+        category={category || undefined}
+        image={category ? undefined : (sortType === 'new' ? banners.combos : banners.thala)}
+        title={category ? category : 'Shop All Products'}
+        subtitle='Premium matte prints — A6 to A3+'
+      />
 
       <div className='text-center text-xl sm:text-2xl mt-10 mb-6'>
         <Title text1={category ? category : 'Shop All Products'} />

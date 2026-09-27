@@ -9,6 +9,7 @@ import Cart from './pages/Cart'
 import Shipping from './pages/Shipping'
 import Login from './pages/Login'
 import PlaceOrder from './pages/PlaceOrder'
+import OrderPlaced from './pages/OrderPlaced'
 import Orders from './pages/Orders'
 import Favorites from './pages/Favorites'
 import CustomPosters from './pages/CustomPosters'
@@ -42,6 +43,7 @@ const App = () => {
           <Route path='/shipping' element={<Shipping />} />
           <Route path='/login' element={<Login />} />
           <Route path='/place-order' element={<PlaceOrder />} />
+          <Route path='/order-placed' element={<OrderPlaced />} />
           <Route path='/orders' element={<Orders />} />
           <Route path='/verify' element={<Verify />} />
         </Routes>

@@ -145,13 +145,24 @@ export const DEFAULT_SIZE = 'A4'
 // Combo ladder shown on product pages and applied in the cart: pay for `buy`
 // posters, take home `get`. The highest tier the basket qualifies for wins.
 export const COMBO_TIERS = [
-    { buy: 4,  get: 8,  effective: 75 },
-    { buy: 5,  get: 12, effective: 69 },
-    { buy: 7,  get: 17, effective: 61 },
-    { buy: 10, get: 30, effective: 59 },
+    { buy: 4,  get: 8  },
+    { buy: 5,  get: 12 },
+    { buy: 7,  get: 17 },
+    { buy: 10, get: 30 },
 ]
 
-export const MIN_ORDER_VALUE = 499
+// A qualifying combo lands at ₹356 plus a flat ₹4 platform fee = ₹360,
+// which is also the minimum an order has to reach before it can be placed.
+export const PLATFORM_FEE = 4
+export const MIN_ORDER_VALUE = 360
+
+// Effective per-poster price of a tier at a given size: you pay for `buy`
+// posters and take home `get`, so the advertised figure has to be derived from
+// the real size price rather than hard-coded.
+export const getComboEffectivePrice = (tier, size = DEFAULT_SIZE) => {
+    const base = SIZE_PRICING[size] || SIZE_PRICING[DEFAULT_SIZE]
+    return Math.round((base.price * tier.buy) / tier.get)
+}
 
 // Every poster's name is shown with its Single/Split type wherever it's displayed.
 export const formatProductName = (product) =>
@@ -739,3 +750,58 @@ export const products = [
         isCustom: true
     },
 ]
+
+// Per-category banner art for listing pages. Each category gets its own poster
+// collage, headline and accent colour so no two pages open with the same strip.
+// The studio's own promo banners stay where they belong: `hero` on the home page
+// (New Arrivals) and `combos` on the unfiltered Shop All page.
+export const CATEGORY_BANNERS = {
+    'Autosport': {
+        headline: 'Autosport',
+        tagline: 'Apexes, tyre smoke and screaming engines.',
+        accent: '#FF3B30',
+        posters: [carBmwM2Drift, carPorsche911Gt3, carAmgGt],
+    },
+    'Anime': {
+        headline: 'Anime',
+        tagline: 'Arcs, panels and the crews you grew up with.',
+        accent: '#7C5CFF',
+        posters: [animeOnepieceGear5, animeItachi, animeSaitama],
+    },
+    'Sports': {
+        headline: 'Sports',
+        tagline: 'The last over, the last minute, the last word.',
+        accent: '#FFB300',
+        posters: [sportsDhoniCsk, sportsMessi, sportsDhoniWhistle],
+    },
+    'TV Series': {
+        headline: 'TV & Cinema',
+        tagline: 'Frames worth framing, from cult classics to Kollywood.',
+        accent: '#E0A75E',
+        posters: [moviePeakyBlinders, movieLeoBadass, movieWolfOfWallstreet],
+    },
+    'Music': {
+        headline: 'Music',
+        tagline: 'Album art energy for the wall behind the speakers.',
+        accent: '#00C2A8',
+        posters: [musicEminem, musicTheWeeknd, musicTravisScott],
+    },
+    'Video-Games': {
+        headline: 'Video Games',
+        tagline: 'Load screens, loot drops and open worlds.',
+        accent: '#2EC4FF',
+        posters: [gamingGtaVi, gamingCodZombies],
+    },
+    'Motivate': {
+        headline: 'Motivate',
+        tagline: 'Words you want to read before you start the day.',
+        accent: '#F5007E',
+        posters: [motivateLearnEarn, motivationalEverythingOk],
+    },
+    'Custom': {
+        headline: 'Custom Posters',
+        tagline: 'Your photo, your artwork — printed in A4 or A3.',
+        accent: '#F5007E',
+        posters: [catPersonalized, heroSpiderverseLove, animeOnepieceCrewSet],
+    },
+}

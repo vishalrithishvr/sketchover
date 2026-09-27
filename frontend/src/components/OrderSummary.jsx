@@ -1,6 +1,6 @@
 import React, { useContext, useState } from 'react'
 import { ShopContext } from '../context/ShopContext'
-import { getSizePrice, formatProductName } from '../assets/assets'
+import { getSizePrice, formatProductName, PLATFORM_FEE } from '../assets/assets'
 import { PlusIcon, MinusIcon, ArrowRightIcon } from './icons/NavIcons'
 
 export const VALID_COUPONS = { SKO10: 10, SKO5: 5, WELCOME5: 5 }
@@ -11,8 +11,16 @@ export const useOrderTotals = () => {
   const comboDiscount = getComboDiscount()
   const discountPct = VALID_COUPONS[couponCode.trim().toUpperCase()] || 0
   const couponDiscount = Math.round((subtotal - comboDiscount) * discountPct / 100)
-  const total = Math.max(0, subtotal - comboDiscount - couponDiscount)
-  return { subtotal, comboDiscount, discountPct, couponDiscount, total, comboTier: getActiveComboTier() }
+  // Goods value after every discount, then the flat platform fee on top. A
+  // qualifying Buy 4 Get 8 basket lands on ₹356 + ₹4 = the ₹360 minimum.
+  const itemsTotal = Math.max(0, subtotal - comboDiscount - couponDiscount)
+  const platformFee = itemsTotal > 0 ? PLATFORM_FEE : 0
+  const total = itemsTotal + platformFee
+  return {
+    subtotal, comboDiscount, discountPct, couponDiscount,
+    itemsTotal, platformFee, total,
+    comboTier: getActiveComboTier(),
+  }
 }
 
 // Bordered summary panel. `action` is a render prop so each step supplies its own
@@ -20,7 +28,7 @@ export const useOrderTotals = () => {
 const OrderSummary = ({ showItems = false, action }) => {
   const { products, cartItems, currency, updateQuantity } = useContext(ShopContext)
   const [agreed, setAgreed] = useState(false)
-  const { subtotal, comboDiscount, discountPct, total, comboTier } = useOrderTotals()
+  const { subtotal, comboDiscount, couponDiscount, discountPct, platformFee, total, comboTier } = useOrderTotals()
 
   const lineItems = []
   for (const itemId in cartItems) {
@@ -72,8 +80,17 @@ const OrderSummary = ({ showItems = false, action }) => {
 
         <div className='flex justify-between py-1.5'>
           <span>Discount</span>
-          <span className='font-medium'>{discountPct}%</span>
+          <span className='font-medium'>
+            {discountPct > 0 ? `-${currency}${couponDiscount} (${discountPct}%)` : `${discountPct}%`}
+          </span>
         </div>
+
+        {platformFee > 0 && (
+          <div className='flex justify-between py-1.5 text-sm text-gray-600'>
+            <span>Platform fee</span>
+            <span>{currency}{platformFee}.00</span>
+          </div>
+        )}
 
         <hr className='my-3 border-gray-200' />
 
@@ -81,6 +98,8 @@ const OrderSummary = ({ showItems = false, action }) => {
           <span>Total</span>
           <span className='font-medium'>{currency}{total}.00</span>
         </div>
+
+        <p className='text-[10px] text-gray-500 mt-1'>Includes a {currency}{PLATFORM_FEE} platform fee. Prepaid only — no cash on delivery.</p>
 
         <label className='flex items-start gap-2 text-[10px] text-gray-500 mt-4'>
           <input type='checkbox' checked={agreed} onChange={()=>setAgreed(a=>!a)} className='mt-0.5 accent-black' />

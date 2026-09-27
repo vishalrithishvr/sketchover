@@ -1,6 +1,6 @@
 import React, { useContext } from 'react'
 import { ShopContext } from '../context/ShopContext'
-import { COMBO_TIERS } from '../assets/assets'
+import { COMBO_TIERS, getComboEffectivePrice } from '../assets/assets'
 import { CheckIcon } from './icons/NavIcons'
 
 // Selectable combo ladder. Picking a tier adds this poster to the basket and
@@ -64,7 +64,7 @@ const ComboOffer = ({ product, size, onPick }) => {
               <p className={`text-[10px] sm:text-[11px] mt-1 ${selected ? 'text-white/75' : 'text-white/60'}`}>
                 {selected
                   ? (remaining > 0 ? `Add ${remaining} more` : 'Unlocked!')
-                  : `Just ₹${tier.effective}/poster effective`}
+                  : `Just ₹${getComboEffectivePrice(tier, size)}/poster effective`}
               </p>
             </button>
           )

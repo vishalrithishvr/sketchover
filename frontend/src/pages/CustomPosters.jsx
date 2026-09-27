@@ -40,6 +40,7 @@ const CustomPosters = () => {
   return (
     <div>
       <PageBanner
+        category='Custom'
         title='Custom Posters'
         subtitle='Upload your own photo or artwork — printed in A4 or A3'
         starburst

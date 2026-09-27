@@ -20,7 +20,7 @@ const CategoryShowcase = () => {
 
           return (
             <Reveal key={item.category} delay={index * 40} className='w-full flex justify-center'>
-              <Link to={to} className='flex flex-col items-center gap-2.5 w-full max-w-[96px] group'>
+              <Link to={to} className='flex flex-col items-center gap-2.5 w-full max-w-[96px] group transition-transform active:scale-95'>
                 <div className='w-full aspect-square rounded-full overflow-hidden ring-2 ring-black/5 group-hover:ring-brand transition-all'>
                   <img
                     src={item.image}

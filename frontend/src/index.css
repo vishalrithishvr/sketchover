@@ -69,3 +69,48 @@ a.active hr{
     margin-left: 50%;
     transform: translateX(-50%);
   }
+  /* --- Entrance animations used by the category banners and nav feedback --- */
+  @keyframes rise-in {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: none; }
+  }
+  .animate-rise-in { animation: rise-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+  @keyframes fan-in {
+    from { opacity: 0; transform: translateY(26px) scale(0.92); }
+    to   { opacity: 1; transform: none; }
+  }
+  .animate-fan-in { animation: fan-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+  /* Category tap feedback: a brand-coloured curtain sweeps up over the page
+     while the route changes, so a tap always produces something visible. */
+  @keyframes curtain-sweep {
+    0%   { transform: translateY(100%); }
+    38%  { transform: translateY(0); }
+    62%  { transform: translateY(0); }
+    100% { transform: translateY(-100%); }
+  }
+  .animate-curtain { animation: curtain-sweep 0.85s cubic-bezier(0.65, 0, 0.35, 1) both; }
+
+  @keyframes label-in {
+    0%   { opacity: 0; transform: translateY(18px); }
+    30%  { opacity: 1; transform: none; }
+    72%  { opacity: 1; transform: none; }
+    100% { opacity: 0; transform: translateY(-18px); }
+  }
+  .animate-label-in { animation: label-in 0.85s ease-in-out both; }
+
+  @keyframes tile-pop {
+    0%   { transform: scale(1); }
+    45%  { transform: scale(0.93); }
+    100% { transform: scale(1); }
+  }
+  .animate-tile-pop { animation: tile-pop 0.4s ease-out both; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-rise-in,
+    .animate-fan-in,
+    .animate-curtain,
+    .animate-label-in,
+    .animate-tile-pop { animation: none; }
+  }

@@ -1,18 +1,24 @@
 import React, { useContext, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ShopContext } from '../context/ShopContext'
-import { getSizePrice, formatProductName, MIN_ORDER_VALUE } from '../assets/assets';
+import { getSizePrice, formatProductName, MIN_ORDER_VALUE, COMBO_TIERS } from '../assets/assets';
 import Title from '../components/Title';
 import CheckoutSteps from '../components/CheckoutSteps';
-import OrderSummary, { CouponBox } from '../components/OrderSummary';
+import OrderSummary, { CouponBox, useOrderTotals } from '../components/OrderSummary';
 import ProductItem from '../components/ProductItem';
 import NewsletterBox from '../components/NewsletterBox';
-import { PlusIcon, MinusIcon, CloseIcon } from '../components/icons/NavIcons';
+import { PlusIcon, MinusIcon, CloseIcon, CheckIcon, OfferIcon } from '../components/icons/NavIcons';
+
+const FIRST_TIER = COMBO_TIERS[0]
 
 const Cart = () => {
 
-  const { products, cartItems, updateQuantity, navigate, getCartAmount } = useContext(ShopContext);
+  const {
+    products, cartItems, updateQuantity, navigate, currency,
+    getComboQty, getNextComboTier, activeCombo, startCombo,
+  } = useContext(ShopContext);
   const [cartData, setCartData] = useState([]);
+  const { subtotal, comboDiscount, total, comboTier } = useOrderTotals();
 
   useEffect(() => {
     const tempData = [];
@@ -26,9 +32,20 @@ const Cart = () => {
     setCartData(tempData);
   }, [cartItems, products])
 
+  const comboQty = getComboQty();
+  const nextTier = getNextComboTier();
+
+  // Combo pricing needs no opt-in: from the first rung's buy quantity onwards
+  // the cart arms the next tier itself, and getComboDiscount() applies the best
+  // tier the basket has actually earned.
+  useEffect(() => {
+    if (comboQty >= FIRST_TIER.buy && nextTier && activeCombo?.get !== nextTier.get) {
+      startCombo(nextTier)
+    }
+  }, [comboQty, nextTier?.get])
+
   const suggestions = products.filter(p => !p.isCustom && !cartData.some(c => c._id === p._id)).slice(0, 4);
-  const subtotal = getCartAmount();
-  const belowMinimum = subtotal > 0 && subtotal < MIN_ORDER_VALUE;
+  const belowMinimum = subtotal > 0 && total < MIN_ORDER_VALUE;
 
   return (
     <div>
@@ -48,6 +65,35 @@ const Cart = () => {
 
         {/* Items */}
         <div>
+
+          {/* Combo status — applied automatically, or how far off it is. */}
+          {comboDiscount > 0 ? (
+            <div className='flex items-start gap-3 border border-green-600 bg-green-50 px-4 py-3 mb-6'>
+              <CheckIcon className='w-4 h-4 text-green-700 mt-0.5 shrink-0' />
+              <div className='text-sm'>
+                <p className='text-green-800 font-medium'>
+                  Combo applied automatically — Buy {comboTier.buy} Get {comboTier.get}
+                </p>
+                <p className='text-green-700/80 text-xs mt-0.5'>
+                  {comboTier.get - comboTier.buy} posters free, {currency}{comboDiscount} off this cart.
+                  {nextTier && ` Add ${nextTier.get - comboQty} more for Buy ${nextTier.buy} Get ${nextTier.get}.`}
+                </p>
+              </div>
+            </div>
+          ) : comboQty >= FIRST_TIER.buy && nextTier ? (
+            <div className='flex items-start gap-3 border border-brand bg-brand/5 px-4 py-3 mb-6'>
+              <OfferIcon className='w-4 h-4 text-brand mt-0.5 shrink-0' />
+              <div className='text-sm flex-1'>
+                <p className='text-brand font-medium'>
+                  {comboQty} posters in — add {nextTier.get - comboQty} more and {nextTier.get - nextTier.buy} come free
+                </p>
+                <p className='text-gray-500 text-xs mt-0.5'>
+                  Buy {nextTier.buy} Get {nextTier.get} applies here the moment you qualify. <Link to='/collection' className='underline hover:text-brand'>Add posters</Link>
+                </p>
+              </div>
+            </div>
+          ) : null}
+
           {cartData.map((item, index) => {
             const productData = products.find((product) => product._id === item._id);
             if (!productData) return null;
@@ -55,11 +101,20 @@ const Cart = () => {
 
             return (
               <div key={index} className='flex gap-4 sm:gap-6 py-6 border-b border-gray-200'>
-                <img className='w-20 sm:w-[110px] aspect-[176/206] object-cover bg-gray-100 shrink-0' src={productData.image[0]} alt='' />
+                {/* Tapping the poster goes straight to its description page. */}
+                <Link to={`/product/${productData._id}`} className='shrink-0 group'>
+                  <img
+                    className='w-20 sm:w-[110px] aspect-[176/206] object-cover bg-gray-100 group-hover:opacity-90 transition-opacity'
+                    src={productData.image[0]}
+                    alt={formatProductName(productData)}
+                  />
+                </Link>
 
                 <div className='flex-1 min-w-0'>
                   <div className='flex items-start justify-between gap-3'>
-                    <p className='text-sm sm:text-base'>{formatProductName(productData)}</p>
+                    <Link to={`/product/${productData._id}`} className='text-sm sm:text-base hover:text-brand transition-colors'>
+                      {formatProductName(productData)}
+                    </Link>
                     <button onClick={() => updateQuantity(item._id, item.size, 0)} aria-label='Remove' className='text-gray-400 hover:text-black shrink-0'>
                       <CloseIcon className='w-4 h-4' />
                     </button>
@@ -105,9 +160,17 @@ const Cart = () => {
 
           {belowMinimum && (
             <p className='text-xs text-brand mt-3'>
-              Add ₹{MIN_ORDER_VALUE - subtotal} more to reach the ₹{MIN_ORDER_VALUE} minimum order.
+              Add {currency}{MIN_ORDER_VALUE - total} more to reach the {currency}{MIN_ORDER_VALUE} minimum order.
             </p>
           )}
+
+          {/* Payment terms — prepaid only. */}
+          <div className='border border-gray-300 bg-gray-50 px-4 py-3 mt-4'>
+            <p className='text-sm font-medium'>No cash on delivery</p>
+            <p className='text-xs text-gray-500 mt-1'>
+              Prepaid orders only — pay by UPI, card or net banking when you confirm the order on WhatsApp.
+            </p>
+          </div>
 
           <CouponBox />
         </div>

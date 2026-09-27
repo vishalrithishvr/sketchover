@@ -28,6 +28,21 @@ const ShopContextProvider = (props) => {
     const [shippingAddress, setShippingAddress] = useState({})
     const [couponCode, setCouponCode] = useState('')
 
+    // The order just placed, kept in localStorage so the confirmation page
+    // survives a refresh (and the WhatsApp round-trip on mobile).
+    const [lastOrder, setLastOrder] = useState(() => {
+        try {
+            return JSON.parse(localStorage.getItem('lastOrder')) || null
+        } catch {
+            return null
+        }
+    })
+
+    const saveOrder = (order) => {
+        setLastOrder(order)
+        try { localStorage.setItem('lastOrder', JSON.stringify(order)) } catch { /* non-critical */ }
+    }
+
     // Combo the shopper is working towards, picked from a product page. Drives the
     // progress bar; the discount itself is always the best tier the basket earns.
     const [activeCombo, setActiveCombo] = useState(() => {
@@ -237,6 +252,9 @@ const ShopContextProvider = (props) => {
         return [...COMBO_TIERS].reverse().find(tier => qty >= tier.get) || null;
     }
 
+    // The next rung up the ladder — the cheapest tier the basket has not reached.
+    const getNextComboTier = () => COMBO_TIERS.find(tier => getComboQty() < tier.get) || null
+
     // The qualifying tier's free posters come off the cheapest units.
     const getComboDiscount = () => {
         const unitPrices = getComboUnitPrices();
@@ -294,11 +312,12 @@ const ShopContextProvider = (props) => {
         search, setSearch, showSearch, setShowSearch,
         cartItems, addToCart,setCartItems,
         getCartCount, updateQuantity,
-        getCartAmount, getComboDiscount, getActiveComboTier, getComboQty, activeCombo, startCombo, clearCombo, navigate, backendUrl,
+        getCartAmount, getComboDiscount, getActiveComboTier, getNextComboTier, getComboQty, activeCombo, startCombo, clearCombo, navigate, backendUrl,
         setToken, token,
         wishlist, toggleWishlist,
         shippingAddress, setShippingAddress,
         couponCode, setCouponCode,
+        lastOrder, saveOrder,
         customPosters, addCustomPoster, removeCustomPoster
     }
 

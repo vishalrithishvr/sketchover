@@ -1,13 +1,17 @@
-import React, { useContext, useEffect, useState } from 'react'
+import React, { useContext, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { ShopContext } from '../context/ShopContext';
-import { categoryShowcase } from '../assets/assets';
+import { categoryShowcase, CATEGORY_BANNERS } from '../assets/assets';
 import Logo from './Logo';
 import { SearchIcon, CartIcon, MenuIcon, CloseIcon, HeartIcon, ChevronDownIcon } from './icons/NavIcons';
 
 const linkClass = ({ isActive }) =>
   `flex items-center gap-1 whitespace-nowrap transition-colors ${isActive ? 'text-black' : 'text-gray-700'} hover:text-black`
+
+// How long the curtain stays up, and when the route swaps behind it.
+const CURTAIN_MS = 850
+const NAVIGATE_AT_MS = 320
 
 // Desktop dropdown. Opens on hover, and on focus so it's keyboard reachable.
 const Dropdown = ({ to, label, children }) => (
@@ -27,6 +31,9 @@ const Dropdown = ({ to, label, children }) => (
 const Navbar = () => {
 
     const [menuOpen, setMenuOpen] = useState(false);
+    // The category being opened: drives the curtain animation and the pressed tile.
+    const [transition, setTransition] = useState(null);
+    const timers = useRef([]);
     const { search, setSearch, setShowSearch, getCartCount, wishlist } = useContext(ShopContext);
     const navigate = useNavigate();
     const location = useLocation();
@@ -39,6 +46,8 @@ const Navbar = () => {
         return () => { document.body.style.overflow = '' }
     }, [menuOpen])
 
+    useEffect(() => () => timers.current.forEach(clearTimeout), [])
+
     const submitSearch = (e) => {
         e.preventDefault()
         setShowSearch(true)
@@ -47,6 +56,41 @@ const Navbar = () => {
     }
 
     const shopCategories = categoryShowcase.filter(c => !c.custom)
+
+    const categoryPath = (category) => `/collection?category=${encodeURIComponent(category)}`
+
+    // Tapping a category plays a short branded curtain while the route changes,
+    // so there is always visible feedback — on a phone as much as on a desktop.
+    const openCategory = (e, category) => {
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return
+        e.preventDefault()
+        if (transition) return
+
+        setTransition({ category, accent: CATEGORY_BANNERS[category]?.accent || '#F5007E' })
+        timers.current.push(setTimeout(() => {
+            setMenuOpen(false)
+            navigate(categoryPath(category))
+            window.scrollTo({ top: 0 })
+        }, NAVIGATE_AT_MS))
+        timers.current.push(setTimeout(() => setTransition(null), CURTAIN_MS))
+    }
+
+    const curtain = transition && createPortal(
+      <div className='fixed inset-0 z-[95] overflow-hidden pointer-events-none' aria-hidden='true'>
+        <div
+          className='absolute inset-0 animate-curtain'
+          style={{ background: `linear-gradient(155deg, #070707 0%, #141414 45%, ${transition.accent} 100%)` }}
+        >
+          <div className='h-full flex flex-col items-center justify-center gap-2 px-6 animate-label-in'>
+            <span className='text-white/60 text-[10px] sm:text-[11px] tracking-[0.34em] uppercase'>Opening</span>
+            <span className='heading-font uppercase text-white leading-none text-[clamp(2rem,9vw,5rem)] text-center'>
+              {CATEGORY_BANNERS[transition.category]?.headline || transition.category}
+            </span>
+          </div>
+        </div>
+      </div>,
+      document.body
+    )
 
     // The drawer is portalled to <body>: the header uses backdrop-blur, which
     // creates a containing block for fixed children and would otherwise trap
@@ -86,9 +130,23 @@ const Navbar = () => {
 
             <NavLink className='py-3.5 px-6 border-b active:bg-gray-50' to='/'>Home</NavLink>
             <NavLink className='py-3.5 px-6 border-b active:bg-gray-50' to='/collection'>Shop all products</NavLink>
-            {shopCategories.map((c) => (
-              <NavLink key={c.category} className='py-3 px-10 border-b text-sm text-gray-500 active:bg-gray-50' to={`/collection?category=${encodeURIComponent(c.category)}`}>{c.category}</NavLink>
-            ))}
+            {shopCategories.map((c) => {
+              const opening = transition?.category === c.category
+              return (
+                <Link
+                  key={c.category}
+                  to={categoryPath(c.category)}
+                  onClick={(e) => openCategory(e, c.category)}
+                  className={`flex items-center gap-3 py-3 pl-8 pr-6 border-b text-sm origin-left transition-colors ${
+                    opening ? 'bg-brand/10 text-brand animate-tile-pop' : 'text-gray-500 active:bg-gray-50'
+                  }`}
+                >
+                  <img src={c.image} alt='' className='w-8 h-8 rounded-full object-cover shrink-0' />
+                  <span>{c.category}</span>
+                  {opening && <span className='ml-auto w-1.5 h-1.5 rounded-full bg-brand animate-ping' />}
+                </Link>
+              )
+            })}
             <NavLink className='py-3.5 px-6 border-b active:bg-gray-50' to='/collection?sort=new'>New arrivals</NavLink>
             <NavLink className='py-3.5 px-6 border-b active:bg-gray-50' to='/custom-posters'>Custom Posters</NavLink>
             <NavLink className='py-3.5 px-6 border-b active:bg-gray-50' to='/favorites'>Favorites</NavLink>
@@ -111,7 +169,14 @@ const Navbar = () => {
           <ul className='flex items-center gap-7 text-sm'>
             <Dropdown to='/collection' label='Shop'>
               {shopCategories.map((c) => (
-                <Link key={c.category} to={`/collection?category=${encodeURIComponent(c.category)}`} className='hover:text-brand whitespace-nowrap'>{c.category}</Link>
+                <Link
+                  key={c.category}
+                  to={categoryPath(c.category)}
+                  onClick={(e) => openCategory(e, c.category)}
+                  className={`whitespace-nowrap transition-colors ${transition?.category === c.category ? 'text-brand' : 'hover:text-brand'}`}
+                >
+                  {c.category}
+                </Link>
               ))}
               <Link to='/collection' className='pt-2 mt-1 border-t border-gray-100 text-black hover:text-brand'>Shop all products</Link>
             </Dropdown>
@@ -120,8 +185,8 @@ const Navbar = () => {
             <li><NavLink to='/custom-posters' className={linkClass}>Custom Posters</NavLink></li>
 
             <Dropdown to='/collection?category=TV Series' label='Vintage Prints'>
-              <Link to='/collection?category=TV Series' className='hover:text-brand'>TV &amp; Movie Classics</Link>
-              <Link to='/collection?category=Autosport' className='hover:text-brand'>Retro Autosport</Link>
+              <Link to={categoryPath('TV Series')} onClick={(e) => openCategory(e, 'TV Series')} className='hover:text-brand'>TV &amp; Movie Classics</Link>
+              <Link to={categoryPath('Autosport')} onClick={(e) => openCategory(e, 'Autosport')} className='hover:text-brand'>Retro Autosport</Link>
             </Dropdown>
           </ul>
         </nav>
@@ -163,6 +228,7 @@ const Navbar = () => {
       </div>
 
       {drawer}
+      {curtain}
     </header>
   )
 }
