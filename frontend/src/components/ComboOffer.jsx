@@ -1,72 +1,92 @@
 import React, { useContext } from 'react'
 import { ShopContext } from '../context/ShopContext'
-import { COMBO_TIERS } from '../assets/assets'
-import { CheckIcon } from './icons/NavIcons'
+import { COMBO_TIERS, getComboEffectivePrice, getTierSaving } from '../assets/assets'
+import { CheckIcon, CloseIcon } from './icons/NavIcons'
 
-// Selectable combo ladder. Picking a tier adds this poster to the basket and
-// sets it as the goal — a progress bar then follows the shopper around the site
-// while they pick the rest.
+// The combo ladder on a product page, for the size currently selected. Picking a
+// tier adds this poster and marks the goal; its Cancel takes that poster back
+// out again. Counts are per size — A4 posters only ever count towards A4.
 const ComboOffer = ({ product, size, onPick }) => {
-  const { activeCombo, startCombo, clearCombo, getComboQty, addToCart } = useContext(ShopContext)
-  const qty = getComboQty()
+  const { activeCombo, startCombo, clearCombo, comboBySize, addToCart, changeQuantity } = useContext(ShopContext)
+
+  const forSize = comboBySize.find(entry => entry.size === size)
+  const count = forSize?.count || 0
+  const picked = activeCombo?.size === size ? activeCombo : null
 
   const choose = (tier) => {
-    if (activeCombo?.get === tier.get) {
-      clearCombo()
-      return
-    }
-    startCombo(tier)
+    startCombo({ size, buy: tier.buy, get: tier.get, productId: product?._id })
     if (product && size) {
       addToCart(product._id, size)
       onPick?.(tier)
     }
   }
 
+  // Cancel puts back exactly what picking the tier added.
+  const cancel = (e) => {
+    e.stopPropagation()
+    if (picked?.productId) changeQuantity(picked.productId, picked.size, -1)
+    clearCombo()
+  }
+
   return (
     <div className='mt-6 border-2 border-dashed border-black p-4'>
       <div className='flex items-baseline justify-between gap-3 mb-1'>
         <p className='heading-font tracking-[0.18em] text-sm sm:text-base'>COMBO&nbsp;&nbsp;OFFER</p>
-        {activeCombo && (
-          <button onClick={clearCombo} className='text-[11px] text-gray-500 underline hover:text-black'>
-            Cancel
-          </button>
-        )}
+        <span className='text-[11px] text-gray-500'>{size} · {count} in cart</span>
       </div>
       <p className='text-[11px] text-gray-500 mb-3'>
-        Pick a deal — we'll add this poster and track the rest as you browse.
+        Combos count within one size. Pick a deal and we'll add this poster in {size} — keep going at {size} to unlock it.
       </p>
 
       <div className='grid grid-cols-2 gap-3'>
         {COMBO_TIERS.map((tier) => {
-          const selected = activeCombo?.get === tier.get
-          const remaining = Math.max(0, tier.get - qty)
+          const selected = picked?.get === tier.get
+          const unlocked = count >= tier.get
+          const remaining = Math.max(0, tier.get - count)
 
           return (
-            <button
+            <div
               key={tier.buy}
-              onClick={() => choose(tier)}
-              aria-pressed={selected}
-              className={`text-left px-3 py-2.5 transition-all ${
-                selected
-                  ? 'bg-brand text-white ring-2 ring-brand ring-offset-2'
-                  : 'bg-neutral-900 text-white hover:bg-neutral-800'
+              className={`relative transition-all ${
+                unlocked ? 'bg-green-600 text-white'
+                  : selected ? 'bg-brand text-white ring-2 ring-brand ring-offset-2'
+                  : 'bg-neutral-900 text-white'
               }`}
             >
-              <p className='flex items-center gap-1.5 text-xs sm:text-sm font-medium'>
-                BUY {tier.buy}
-                <span className={selected ? 'text-white' : 'text-brand'}>&rarr;</span>
-                GET {tier.get}
-                {selected && <CheckIcon className='w-3.5 h-3.5 ml-auto' />}
-              </p>
-              <p className={`text-[10px] sm:text-[11px] mt-0.5 ${selected ? 'text-white/90' : 'text-brand'}`}>
-                +{tier.get - tier.buy} FREE posters
-              </p>
-              <p className={`text-[10px] sm:text-[11px] mt-1 ${selected ? 'text-white/75' : 'text-white/60'}`}>
-                {selected
-                  ? (remaining > 0 ? `Add ${remaining} more` : 'Unlocked!')
-                  : `Just ₹${tier.effective}/poster effective`}
-              </p>
-            </button>
+              <button
+                onClick={() => choose(tier)}
+                aria-pressed={selected}
+                className='w-full text-left px-3 py-2.5 hover:opacity-95 transition-opacity'
+              >
+                <p className='flex items-center gap-1.5 text-xs sm:text-sm font-medium whitespace-nowrap'>
+                  BUY {tier.buy}
+                  <span className={selected || unlocked ? 'text-white' : 'text-brand'}>&rarr;</span>
+                  GET {tier.get}
+                  {unlocked && <CheckIcon className='w-3.5 h-3.5 ml-auto' />}
+                </p>
+                <p className={`text-[10px] sm:text-[11px] mt-0.5 ${selected || unlocked ? 'text-white/90' : 'text-brand'}`}>
+                  +{tier.get - tier.buy} FREE posters
+                </p>
+                <p className={`text-[10px] sm:text-[11px] mt-1 ${selected || unlocked ? 'text-white/75' : 'text-white/60'}`}>
+                  {unlocked
+                    ? `Unlocked — ₹${getTierSaving(tier, size)} off`
+                    : selected
+                      ? `Add ${remaining} more ${size}`
+                      : `₹${getComboEffectivePrice(tier, size)}/poster effective`}
+                </p>
+              </button>
+
+              {selected && (
+                <button
+                  onClick={cancel}
+                  aria-label={`Cancel Buy ${tier.buy} Get ${tier.get}`}
+                  className='absolute top-1.5 right-1.5 flex items-center gap-1 text-[10px] bg-white/15 hover:bg-white/25 px-1.5 py-0.5 transition-colors'
+                >
+                  <CloseIcon className='w-3 h-3' />
+                  Cancel
+                </button>
+              )}
+            </div>
           )
         })}
       </div>

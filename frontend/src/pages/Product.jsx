@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { ShopContext } from '../context/ShopContext';
-import { getSizePrice, formatProductName, DEFAULT_SIZE } from '../assets/assets';
+import { getSizePrice, formatProductName, DEFAULT_SIZE, isComboEligible } from '../assets/assets';
 import RelatedProducts from '../components/RelatedProducts';
 import LatestArrivalGrid from '../components/LatestArrivalGrid';
 import NewsletterBox from '../components/NewsletterBox';
@@ -158,7 +158,7 @@ const Product = () => {
               <p>Printed and dispatched within 2-3 business days; delivery typically takes 4-7 days. Free delivery on orders from ₹399.</p>
             </Accordion>
 
-            {!productData.isCustom && <ComboOffer product={productData} size={size} />}
+            {isComboEligible(productData) && <ComboOffer product={productData} size={size} />}
           </div>
         </div>
       </div>

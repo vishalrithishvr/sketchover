@@ -145,12 +145,12 @@ const OrderPlaced = () => {
           <div className='flex justify-between py-1.5 text-sm'>
             <span>Subtotal</span><span>{currency}{totals.subtotal}.00</span>
           </div>
-          {totals.comboDiscount > 0 && (
-            <div className='flex justify-between py-1.5 text-sm text-brand'>
-              <span>Combo (Buy {totals.comboBuy} Get {totals.comboGet})</span>
-              <span>-{currency}{totals.comboDiscount}</span>
+          {(totals.combos || []).map(entry => (
+            <div key={entry.size} className='flex justify-between py-1.5 text-sm text-brand'>
+              <span>{entry.size} combo (Buy {entry.buy} Get {entry.get})</span>
+              <span>-{currency}{entry.discount}</span>
             </div>
-          )}
+          ))}
           {totals.couponDiscount > 0 && (
             <div className='flex justify-between py-1.5 text-sm'>
               <span>Discount ({totals.discountPct}%)</span>

@@ -117,11 +117,11 @@ export const bannerPosters = [
 export const SIZES = ['A6', 'A5', 'A4', 'A3', 'A3+']
 
 export const SIZE_PRICING = {
-    A6:    { price: 79,  originalPrice: 119 },
-    A5:    { price: 129, originalPrice: 179 },
+    A6:    { price: 29,  originalPrice: 49  },
+    A5:    { price: 49,  originalPrice: 79  },
     A4:    { price: 89,  originalPrice: 129 },
-    A3:    { price: 100, originalPrice: 149 },
-    'A3+': { price: 149, originalPrice: 219 },
+    A3:    { price: 109, originalPrice: 159 },
+    'A3+': { price: 119, originalPrice: 179 },
 }
 
 const SPLIT_PANEL_COUNT = 3
@@ -135,6 +135,15 @@ export const getSizePrice = (size, subCategory) => {
     }
 }
 
+// The four kinds of personalised print the studio makes. `images` is how many
+// photos the shopper has to send for that kind.
+export const CUSTOM_POSTER_TYPES = [
+    { id: 'custom',   name: 'Customized Poster', blurb: 'Your photo or artwork, printed full bleed.', images: 1 },
+    { id: 'polaroid', name: 'Polaroid',          blurb: 'Polaroid-style frame with a white border and caption.', images: 1 },
+    { id: 'strip',    name: 'Strip',             blurb: 'Three of your photos stacked into one photo-booth strip.', images: 3 },
+    { id: 'wanted',   name: 'Wanted Poster',     blurb: 'Old-west WANTED treatment, aged paper and all.', images: 1 },
+]
+
 // Custom posters are offered in two sizes only.
 export const CUSTOM_SIZES = ['A4', 'A3']
 const CUSTOM_SIZES_PRICING = { A4: SIZE_PRICING.A4, A3: SIZE_PRICING.A3 }
@@ -143,23 +152,65 @@ const CUSTOM_SIZES_PRICING = { A4: SIZE_PRICING.A4, A3: SIZE_PRICING.A3 }
 export const DEFAULT_SIZE = 'A4'
 
 // Combo ladder, taken straight from the Product Description PDF: pay for `buy`
-// posters, take home `get`, with `effective` the per-poster figure the studio
-// advertises on each tile. The highest tier the basket qualifies for wins.
+// posters, take home `get`.
+//
+// Combos are counted per size and never mix: four A6 posters earn eight A6
+// posters, and they do not help an A5 combo along. Split (collage) sets and
+// custom prints are outside the offer entirely.
 export const COMBO_TIERS = [
-    { buy: 4,  get: 8,  effective: 75 },
-    { buy: 5,  get: 12, effective: 69 },
-    { buy: 7,  get: 17, effective: 61 },
-    { buy: 10, get: 30, effective: 59 },
+    { buy: 4,  get: 8  },
+    { buy: 5,  get: 12 },
+    { buy: 7,  get: 17 },
+    { buy: 10, get: 30 },
 ]
 
-// Look a tier back up by its `get` count — an activeCombo saved by an older
-// build may be missing the newer fields.
+// Combos apply to single posters only — collage sets and custom prints are out.
+export const isComboEligible = (product) => !!product && !product.isCustom && product.subCategory === 'Single'
+
+// Look a tier back up by its `get` count — a combo saved by an older build may
+// be missing the newer fields.
 export const findComboTier = (get) => COMBO_TIERS.find(tier => tier.get === get) || null
 
-// Every order carries a flat ₹4 platform fee, and has to reach ₹400 in total
-// before it can be placed.
+// The best tier a run of `count` posters of one size has earned, and the next
+// rung it has not reached yet.
+export const getEarnedTier = (count) => [...COMBO_TIERS].reverse().find(tier => count >= tier.get) || null
+export const getNextTier = (count) => COMBO_TIERS.find(tier => count < tier.get) || null
+
+// What a tier is worth at a given size: the free posters come at that size's price.
+export const getTierSaving = (tier, size) => {
+    if (!tier) return 0
+    const base = SIZE_PRICING[size] || SIZE_PRICING[DEFAULT_SIZE]
+    return (tier.get - tier.buy) * base.price
+}
+
+// The per-poster figure a tier works out to at a given size.
+export const getComboEffectivePrice = (tier, size) => {
+    const base = SIZE_PRICING[size] || SIZE_PRICING[DEFAULT_SIZE]
+    return Math.round((base.price * tier.buy) / tier.get)
+}
+
+// Every order carries a flat ₹4 platform fee.
 export const PLATFORM_FEE = 4
-export const MIN_ORDER_VALUE = 400
+
+// Each size has its own minimum, set at a first-rung combo of that size: four
+// posters plus the fee. A flat minimum would have put the small sizes out of
+// reach (four A6 posters only come to ₹116).
+export const MIN_ORDER_BY_SIZE = {
+    A6:    4 * SIZE_PRICING.A6.price    + PLATFORM_FEE,   // ₹120
+    A5:    4 * SIZE_PRICING.A5.price    + PLATFORM_FEE,   // ₹200
+    A4:    4 * SIZE_PRICING.A4.price    + PLATFORM_FEE,   // ₹360
+    A3:    4 * SIZE_PRICING.A3.price    + PLATFORM_FEE,   // ₹440
+    'A3+': 4 * SIZE_PRICING['A3+'].price + PLATFORM_FEE,  // ₹480
+}
+
+// A basket is judged against the friendliest minimum among the sizes it holds,
+// so adding a big print never traps an order the small ones already qualified for.
+export const MIN_ORDER_VALUE = MIN_ORDER_BY_SIZE[DEFAULT_SIZE]
+
+export const getMinimumForSizes = (sizes = []) => {
+    const applicable = sizes.map(size => MIN_ORDER_BY_SIZE[size]).filter(Boolean)
+    return applicable.length ? Math.min(...applicable) : MIN_ORDER_VALUE
+}
 
 // Every poster's name is shown with its Single/Split type wherever it's displayed.
 export const formatProductName = (product) =>

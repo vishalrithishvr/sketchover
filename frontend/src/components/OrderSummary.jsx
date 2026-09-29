@@ -6,7 +6,7 @@ import { PlusIcon, MinusIcon, ArrowRightIcon } from './icons/NavIcons'
 export const VALID_COUPONS = { SKO10: 10, SKO5: 5, WELCOME5: 5 }
 
 export const useOrderTotals = () => {
-  const { getCartAmount, getComboDiscount, getActiveComboTier, couponCode } = useContext(ShopContext)
+  const { getCartAmount, getComboDiscount, comboBySize, couponCode } = useContext(ShopContext)
   const subtotal = getCartAmount()
   const comboDiscount = getComboDiscount()
   const discountPct = VALID_COUPONS[couponCode.trim().toUpperCase()] || 0
@@ -19,7 +19,8 @@ export const useOrderTotals = () => {
   return {
     subtotal, comboDiscount, discountPct, couponDiscount,
     itemsTotal, platformFee, total,
-    comboTier: getActiveComboTier(),
+    // One entry per size that earned a combo, for the summary lines.
+    combos: comboBySize.filter(entry => entry.discount > 0),
   }
 }
 
@@ -28,7 +29,7 @@ export const useOrderTotals = () => {
 const OrderSummary = ({ showItems = false, action }) => {
   const { products, cartItems, currency, changeQuantity } = useContext(ShopContext)
   const [agreed, setAgreed] = useState(false)
-  const { subtotal, comboDiscount, couponDiscount, discountPct, platformFee, total, comboTier } = useOrderTotals()
+  const { subtotal, couponDiscount, discountPct, platformFee, total, combos } = useOrderTotals()
 
   const lineItems = []
   for (const itemId in cartItems) {
@@ -71,12 +72,12 @@ const OrderSummary = ({ showItems = false, action }) => {
           <span className='font-medium'>{currency}{subtotal}.00</span>
         </div>
 
-        {comboDiscount > 0 && (
-          <div className='flex justify-between py-1.5 text-brand text-sm'>
-            <span>Combo (Buy {comboTier?.buy} Get {comboTier?.get})</span>
-            <span>-{currency}{comboDiscount}</span>
+        {combos.map(entry => (
+          <div key={entry.size} className='flex justify-between py-1.5 text-brand text-sm'>
+            <span>{entry.size} combo (Buy {entry.tier.buy} Get {entry.tier.get})</span>
+            <span>-{currency}{entry.discount}</span>
           </div>
-        )}
+        ))}
 
         <div className='flex justify-between py-1.5'>
           <span>Discount</span>

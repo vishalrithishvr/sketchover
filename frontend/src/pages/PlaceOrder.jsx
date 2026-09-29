@@ -7,7 +7,7 @@ import OrderSummary, { useOrderTotals } from '../components/OrderSummary'
 import FavoritesList from '../components/FavoritesList'
 import NewsletterBox from '../components/NewsletterBox'
 import { ShopContext } from '../context/ShopContext'
-import { getSizePrice, formatProductName, MIN_ORDER_VALUE } from '../assets/assets'
+import { getSizePrice, formatProductName } from '../assets/assets'
 import { isChennaiAddress } from '../utils/addressValidation'
 
 const WHATSAPP_NUMBER = '918870333236'
@@ -40,8 +40,8 @@ const ConfirmingOverlay = () => createPortal(
 
 const PlaceOrder = () => {
 
-    const { products, productsLoaded, cartItems, currency, couponCode, shippingAddress, setCartItems, saveOrder, clearCombo } = useContext(ShopContext)
-    const { subtotal, comboDiscount, discountPct, couponDiscount, platformFee, total, comboTier } = useOrderTotals()
+    const { products, productsLoaded, cartItems, currency, couponCode, shippingAddress, setCartItems, saveOrder, clearCombo, cartMinimum } = useContext(ShopContext)
+    const { subtotal, comboDiscount, discountPct, couponDiscount, platformFee, total, combos } = useOrderTotals()
     const navigate = useNavigate()
     const [confirming, setConfirming] = useState(false)
     const timer = useRef(null)
@@ -51,7 +51,7 @@ const PlaceOrder = () => {
     // Warm the confirmation page's chunk before it is needed.
     useEffect(() => { import('./OrderPlaced') }, [])
 
-    const blocked = productsLoaded && !confirming && (subtotal === 0 || total < MIN_ORDER_VALUE);
+    const blocked = productsLoaded && !confirming && (subtotal === 0 || total < cartMinimum);
 
     useEffect(() => {
         if (blocked) navigate('/cart')
@@ -100,7 +100,7 @@ const PlaceOrder = () => {
         })
 
         lines.push('', `Subtotal: ${currency}${subtotal}`)
-        if (comboDiscount > 0) lines.push(`Combo Offer (Buy ${comboTier?.buy} Get ${comboTier?.get}): -${currency}${comboDiscount}`)
+        combos.forEach(entry => lines.push(`Combo ${entry.size} (Buy ${entry.tier.buy} Get ${entry.tier.get}): -${currency}${entry.discount}`))
         if (discountPct > 0) lines.push(`Discount (${couponCode.trim().toUpperCase()}): -${currency}${couponDiscount} (${discountPct}%)`)
         lines.push(`Platform fee: ${currency}${platformFee}`)
         lines.push(`Total: ${currency}${total}`, '')
@@ -136,7 +136,9 @@ const PlaceOrder = () => {
             whatsappUrl,
             totals: {
                 subtotal, comboDiscount, discountPct, couponDiscount, platformFee, total,
-                comboBuy: comboTier?.buy, comboGet: comboTier?.get,
+                combos: combos.map(entry => ({
+                    size: entry.size, buy: entry.tier.buy, get: entry.tier.get, discount: entry.discount,
+                })),
             },
         })
 

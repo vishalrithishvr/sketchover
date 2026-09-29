@@ -2,7 +2,10 @@ import { createContext, useCallback, useEffect, useMemo, useState } from "react"
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import axios from 'axios'
-import { products as localProducts, getSizePrice, COMBO_TIERS } from '../assets/assets'
+import {
+    products as localProducts, getSizePrice, SIZES, isComboEligible,
+    getEarnedTier, getNextTier, getMinimumForSizes,
+} from '../assets/assets'
 
 export const ShopContext = createContext();
 
@@ -68,6 +71,13 @@ const ShopContextProvider = (props) => {
         try { localStorage.removeItem('activeCombo') } catch { /* non-critical */ }
     }, [])
 
+    // The slide-over cart. It opens itself on every add, so the shopper always
+    // sees what just went in without leaving the page they are browsing.
+    const [cartDrawerOpen, setCartDrawerOpen] = useState(false)
+    const [lastAdded, setLastAdded] = useState(null)
+    const openCartDrawer = useCallback(() => setCartDrawerOpen(true), [])
+    const closeCartDrawer = useCallback(() => setCartDrawerOpen(false), [])
+
     const toggleWishlist = useCallback((itemId) => {
         setWishlist(prev => prev.includes(itemId) ? prev.filter(id => id !== itemId) : [...prev, itemId])
     }, [])
@@ -117,57 +127,62 @@ const ShopContextProvider = (props) => {
         [cartLines]
     )
 
-    // Prices of every individual Single poster unit in the basket, cheapest first.
-    const comboUnitPrices = useMemo(() => {
-        const unitPrices = []
+    // Combos are counted per size and never mix, so the basket is grouped by
+    // size and each group earns its own tier.
+    const comboBySize = useMemo(() => {
+        const counts = new Map()
         for (const line of cartLines) {
-            if (line.product.subCategory !== 'Single') continue
-            for (let i = 0; i < line.quantity; i++) unitPrices.push(line.price)
+            if (!isComboEligible(line.product)) continue
+            counts.set(line.size, (counts.get(line.size) || 0) + line.quantity)
         }
-        return unitPrices.sort((a, b) => a - b)
+
+        return SIZES.filter(size => counts.get(size)).map(size => {
+            const count = counts.get(size)
+            const { price } = getSizePrice(size, 'Single')
+            const tier = getEarnedTier(count)
+            const next = getNextTier(count)
+            return {
+                size,
+                count,
+                price,
+                tier,
+                discount: tier ? (tier.get - tier.buy) * price : 0,
+                next,
+                remaining: next ? next.get - count : 0,
+                nextSaving: next ? (next.get - next.buy) * price : 0,
+            }
+        })
     }, [cartLines])
 
-    const comboQty = comboUnitPrices.length
-
-    // Best combo tier the basket currently qualifies for, and the next rung up.
-    const activeComboTier = useMemo(
-        () => [...COMBO_TIERS].reverse().find(tier => comboQty >= tier.get) || null,
-        [comboQty]
+    // How many combo-eligible posters are in the basket, all sizes together.
+    const comboQty = useMemo(
+        () => comboBySize.reduce((sum, entry) => sum + entry.count, 0),
+        [comboBySize]
     )
 
-    const nextComboTier = useMemo(
-        () => COMBO_TIERS.find(tier => comboQty < tier.get) || null,
-        [comboQty]
+    const comboDiscount = useMemo(
+        () => comboBySize.reduce((sum, entry) => sum + entry.discount, 0),
+        [comboBySize]
     )
 
-    // The qualifying tier's free posters come off the cheapest units.
-    const comboDiscount = useMemo(() => {
-        if (!activeComboTier) return 0
-        return comboUnitPrices
-            .slice(0, activeComboTier.get - activeComboTier.buy)
-            .reduce((sum, price) => sum + price, 0)
-    }, [comboUnitPrices, activeComboTier])
+    // The size closest to its next rung — what the cart and the drawer nudge towards.
+    const comboFocus = useMemo(() => {
+        const open = comboBySize.filter(entry => entry.next)
+        if (open.length === 0) return null
+        return open.reduce((best, entry) => (entry.remaining < best.remaining ? entry : best))
+    }, [comboBySize])
 
-    // What the next rung would take off the bill, used as the carrot in the cart.
-    // Posters still to be added are costed at the cheapest one already in the basket.
-    const nextComboSaving = useMemo(() => {
-        if (!nextComboTier) return 0
-        const cheapest = comboUnitPrices[0] || 0
-        const padded = [
-            ...comboUnitPrices,
-            ...Array(Math.max(0, nextComboTier.get - comboUnitPrices.length)).fill(cheapest),
-        ].sort((a, b) => a - b)
-        return padded.slice(0, nextComboTier.get - nextComboTier.buy).reduce((sum, price) => sum + price, 0)
-    }, [comboUnitPrices, nextComboTier])
+    // The minimum this basket has to clear, taken from the friendliest size in it.
+    const cartMinimum = useMemo(
+        () => getMinimumForSizes([...new Set(cartLines.map(line => line.size))]),
+        [cartLines]
+    )
 
     // Kept as functions because every page calls them that way.
     const getCartCount = useCallback(() => cartCount, [cartCount])
     const getCartAmount = useCallback(() => cartAmount, [cartAmount])
     const getComboQty = useCallback(() => comboQty, [comboQty])
-    const getActiveComboTier = useCallback(() => activeComboTier, [activeComboTier])
-    const getNextComboTier = useCallback(() => nextComboTier, [nextComboTier])
     const getComboDiscount = useCallback(() => comboDiscount, [comboDiscount])
-    const getNextComboSaving = useCallback(() => nextComboSaving, [nextComboSaving])
 
     const addToCart = useCallback(async (itemId, size, qty = 1) => {
 
@@ -182,6 +197,9 @@ const ShopContextProvider = (props) => {
             cartData[itemId][size] = (cartData[itemId][size] || 0) + qty
             return cartData
         })
+
+        setLastAdded({ itemId, size, at: Date.now() })
+        setCartDrawerOpen(true)
 
         if (token) {
             try {
@@ -287,7 +305,9 @@ const ShopContextProvider = (props) => {
         search, setSearch, showSearch, setShowSearch,
         cartItems, addToCart, setCartItems, updateQuantity, changeQuantity,
         getCartCount, getCartAmount,
-        getComboDiscount, getActiveComboTier, getNextComboTier, getNextComboSaving, getComboQty,
+        getComboDiscount, getComboQty,
+        comboBySize, comboFocus, cartMinimum,
+        cartDrawerOpen, openCartDrawer, closeCartDrawer, lastAdded,
         activeCombo, startCombo, clearCombo, navigate, backendUrl,
         setToken, token,
         wishlist, toggleWishlist,
@@ -297,7 +317,8 @@ const ShopContextProvider = (props) => {
     }), [
         products, productsById, productsLoaded, search, showSearch, cartItems,
         addToCart, updateQuantity, changeQuantity, getCartCount, getCartAmount, getComboDiscount,
-        getActiveComboTier, getNextComboTier, getNextComboSaving, getComboQty,
+        getComboQty, comboBySize, comboFocus, cartMinimum,
+        cartDrawerOpen, openCartDrawer, closeCartDrawer, lastAdded,
         activeCombo, startCombo, clearCombo, navigate, backendUrl, token,
         wishlist, toggleWishlist, shippingAddress, couponCode, lastOrder, saveOrder,
     ])

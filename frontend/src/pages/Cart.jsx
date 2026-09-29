@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ShopContext } from '../context/ShopContext'
-import { getSizePrice, formatProductName, MIN_ORDER_VALUE, COMBO_TIERS } from '../assets/assets';
+import { getSizePrice, formatProductName } from '../assets/assets';
 import Title from '../components/Title';
 import CheckoutSteps from '../components/CheckoutSteps';
 import OrderSummary, { CouponBox, useOrderTotals } from '../components/OrderSummary';
@@ -10,13 +10,11 @@ import NewsletterBox from '../components/NewsletterBox';
 import ComboGuide from '../components/ComboGuide';
 import { PlusIcon, MinusIcon, CloseIcon } from '../components/icons/NavIcons';
 
-const FIRST_TIER = COMBO_TIERS[0]
-
 const Cart = () => {
 
   const {
     products, productsLoaded, cartItems, updateQuantity, changeQuantity, navigate, currency,
-    getComboQty, getNextComboTier, activeCombo, startCombo,
+    comboFocus, cartMinimum,
   } = useContext(ShopContext);
   const [cartData, setCartData] = useState([]);
   const { subtotal, total } = useOrderTotals();
@@ -33,20 +31,9 @@ const Cart = () => {
     setCartData(tempData);
   }, [cartItems, products])
 
-  const comboQty = getComboQty();
-  const nextTier = getNextComboTier();
-
-  // Combo pricing needs no opt-in: from the first rung's buy quantity onwards
-  // the cart arms the next tier itself, and getComboDiscount() applies the best
-  // tier the basket has actually earned.
-  useEffect(() => {
-    if (comboQty >= FIRST_TIER.buy && nextTier && activeCombo?.get !== nextTier.get) {
-      startCombo(nextTier)
-    }
-  }, [comboQty, nextTier?.get])
-
   const suggestions = products.filter(p => !p.isCustom && !cartData.some(c => c._id === p._id)).slice(0, 4);
-  const belowMinimum = subtotal > 0 && total < MIN_ORDER_VALUE;
+  // Each size sets its own minimum; the basket is judged by the friendliest one.
+  const belowMinimum = subtotal > 0 && total < cartMinimum;
 
   return (
     <div>
@@ -137,7 +124,7 @@ const Cart = () => {
 
           {belowMinimum && (
             <p className='text-xs text-brand mt-3'>
-              Add {currency}{MIN_ORDER_VALUE - total} more to reach the {currency}{MIN_ORDER_VALUE} minimum order.
+              Add {currency}{cartMinimum - total} more to reach the {currency}{cartMinimum} minimum for this order.
             </p>
           )}
 
@@ -157,13 +144,13 @@ const Cart = () => {
       {suggestions.length > 0 && (
         <div className='mt-20'>
           <div className='text-xl sm:text-2xl mb-2'>
-            <Title text1={nextTier && cartData.length > 0
-              ? `ADD ${nextTier.get - comboQty} MORE FOR BUY ${nextTier.buy} GET ${nextTier.get}`
+            <Title text1={comboFocus && cartData.length > 0
+              ? `ADD ${comboFocus.remaining} MORE ${comboFocus.size} FOR BUY ${comboFocus.next.buy} GET ${comboFocus.next.get}`
               : 'YOU MAY ALSO LIKE'} />
           </div>
-          {nextTier && cartData.length > 0 && (
+          {comboFocus && cartData.length > 0 && (
             <p className='text-xs sm:text-sm text-gray-500 mb-6'>
-              Every poster counts towards the combo — {nextTier.get - nextTier.buy} of them come free once you reach {nextTier.get}.
+              Combos count within a size — {comboFocus.next.get - comboFocus.next.buy} {comboFocus.size} posters come free once you reach {comboFocus.next.get} of them.
             </p>
           )}
           <div className='grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-8'>
