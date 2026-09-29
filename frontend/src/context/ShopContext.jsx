@@ -4,8 +4,9 @@ import { useNavigate } from "react-router-dom";
 import axios from 'axios'
 import {
     products as localProducts, getSizePrice, SIZES, isComboEligible,
-    getEarnedTier, getNextTier, getMinimumForSizes,
+    getEarnedTier, getNextTier, getMinimumForSizes, CUSTOM_SIZES,
 } from '../assets/assets'
+import { putFiles, deleteFiles, getFiles, pruneFiles } from '../utils/customPosterStore'
 
 export const ShopContext = createContext();
 
@@ -78,6 +79,105 @@ const ShopContextProvider = (props) => {
     const openCartDrawer = useCallback(() => setCartDrawerOpen(true), [])
     const closeCartDrawer = useCallback(() => setCartDrawerOpen(false), [])
 
+    // --- Uploaded artwork ----------------------------------------------------
+    // An upload becomes an ordinary cart line under the id `custom:<posterId>`,
+    // so the shopper can carry on adding catalogue posters and check the whole
+    // lot out together. The metadata is small enough for localStorage; the files
+    // themselves sit in IndexedDB as the originals.
+    const [customPosters, setCustomPosters] = useState(() => readStored('customPosters', []))
+    const [customPreviews, setCustomPreviews] = useState({})   // posterId -> [objectURL]
+
+    useEffect(() => { writeStored('customPosters', customPosters) }, [customPosters])
+
+    // Rebuild previews for whatever is on file, including after a refresh.
+    useEffect(() => {
+        let cancelled = false
+        const urls = []
+
+        const load = async () => {
+            const next = {}
+            for (const poster of customPosters) {
+                try {
+                    const rows = await getFiles(poster.id)
+                    if (rows.length === 0) continue
+                    next[poster.id] = rows.map(row => {
+                        const url = URL.createObjectURL(row.blob)
+                        urls.push(url)
+                        return url
+                    })
+                } catch { /* the artwork is gone; the line still prices correctly */ }
+            }
+            if (!cancelled) setCustomPreviews(next)
+            else urls.forEach(url => URL.revokeObjectURL(url))
+        }
+
+        load()
+        return () => { cancelled = true; urls.forEach(url => URL.revokeObjectURL(url)) }
+    }, [customPosters])
+
+    // Save the artwork and hand back the cart id it now lives under.
+    const addCustomPoster = useCallback(async ({ type, size, files, dimensions }) => {
+        const id = `cp_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`
+        let stored = []
+        try {
+            stored = await putFiles(id, files)
+        } catch (error) {
+            console.log(error)
+            toast.error('This browser would not keep the artwork — try another browser.')
+            return null
+        }
+
+        const poster = {
+            id,
+            type,
+            size: CUSTOM_SIZES.includes(size) ? size : CUSTOM_SIZES[0],
+            files: stored,
+            dimensions: dimensions || null,
+            createdAt: Date.now(),
+        }
+        setCustomPosters(prev => [poster, ...prev])
+        return poster
+    }, [])
+
+    const removeCustomPoster = useCallback((posterId) => {
+        setCustomPosters(prev => prev.filter(poster => poster.id !== posterId))
+        deleteFiles(posterId).catch(() => { /* nothing to clean up */ })
+    }, [])
+
+    // On load, drop artwork nothing points at any more — a line that was removed
+    // in an earlier session, or an order that has long since been sent.
+    useEffect(() => {
+        const keep = new Set()
+        for (const itemId in cartItems) {
+            if (itemId.startsWith('custom:')) keep.add(itemId.slice('custom:'.length))
+        }
+        for (const id of lastOrder?.customPosterIds || []) keep.add(id)
+
+        setCustomPosters(prev => (
+            prev.length === prev.filter(poster => keep.has(poster.id)).length
+                ? prev
+                : prev.filter(poster => keep.has(poster.id))
+        ))
+        pruneFiles([...keep]).catch(() => { /* nothing to clean up */ })
+        // Once per load: the cart and the last order are both restored by then.
+    }, [])
+
+    // Each upload presents itself to the cart as a product.
+    const customProducts = useMemo(() => customPosters.map(poster => ({
+        _id: `custom:${poster.id}`,
+        customPosterId: poster.id,
+        posterType: poster.type,
+        name: `${poster.type} — ${poster.files.length > 1 ? `${poster.files.length} photos` : poster.files[0]?.name || 'your artwork'}`,
+        description: 'Your own artwork, printed on premium 200 GSM matte paper.',
+        image: customPreviews[poster.id] || [],
+        fileNames: poster.files.map(file => file.name),
+        category: 'Custom',
+        subCategory: 'Single',
+        sizes: CUSTOM_SIZES,
+        isCustom: true,
+        date: poster.createdAt,
+    })), [customPosters, customPreviews])
+
     const toggleWishlist = useCallback((itemId) => {
         setWishlist(prev => prev.includes(itemId) ? prev.filter(id => id !== itemId) : [...prev, itemId])
     }, [])
@@ -87,11 +187,16 @@ const ShopContextProvider = (props) => {
     // bar, the summary). Walking it and searching the catalogue each time adds
     // up, so everything derived from it is computed once and shared.
 
+    // The catalogue plus whatever the shopper uploaded — uploads never appear in
+    // listings, but the cart, the summary and checkout all have to find them.
     const productsById = useMemo(() => {
         const map = new Map()
         for (const product of products) map.set(product._id, product)
+        for (const product of customProducts) map.set(product._id, product)
         return map
-    }, [products])
+    }, [products, customProducts])
+
+    const getProduct = useCallback((itemId) => productsById.get(itemId) || null, [productsById])
 
     const cartLines = useMemo(() => {
         const lines = []
@@ -237,6 +342,11 @@ const ShopContextProvider = (props) => {
 
     const updateQuantity = useCallback(async (itemId, size, quantity) => {
 
+        // Emptying an uploaded poster's line throws the artwork away too.
+        if (quantity <= 0 && itemId.startsWith('custom:')) {
+            removeCustomPoster(itemId.slice('custom:'.length))
+        }
+
         setCartItems(prev => {
             const cartData = structuredClone(prev)
             cartData[itemId] = cartData[itemId] || {}
@@ -253,7 +363,7 @@ const ShopContextProvider = (props) => {
             }
         }
 
-    }, [token, backendUrl])
+    }, [token, backendUrl, removeCustomPoster])
 
     useEffect(() => {
         let cancelled = false
@@ -301,7 +411,8 @@ const ShopContextProvider = (props) => {
     // A stable value object: consumers only re-render when something they use
     // actually changed, not on every keystroke in the search box.
     const value = useMemo(() => ({
-        products, productsById, productsLoaded, currency, delivery_fee,
+        products, productsById, getProduct, productsLoaded, currency, delivery_fee,
+        customPosters, customProducts, addCustomPoster, removeCustomPoster,
         search, setSearch, showSearch, setShowSearch,
         cartItems, addToCart, setCartItems, updateQuantity, changeQuantity,
         getCartCount, getCartAmount,
@@ -315,7 +426,8 @@ const ShopContextProvider = (props) => {
         couponCode, setCouponCode,
         lastOrder, saveOrder,
     }), [
-        products, productsById, productsLoaded, search, showSearch, cartItems,
+        products, productsById, getProduct, productsLoaded, search, showSearch, cartItems,
+        customPosters, customProducts, addCustomPoster, removeCustomPoster,
         addToCart, updateQuantity, changeQuantity, getCartCount, getCartAmount, getComboDiscount,
         getComboQty, comboBySize, comboFocus, cartMinimum,
         cartDrawerOpen, openCartDrawer, closeCartDrawer, lastAdded,

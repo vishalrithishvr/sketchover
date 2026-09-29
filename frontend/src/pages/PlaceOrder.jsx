@@ -40,7 +40,7 @@ const ConfirmingOverlay = () => createPortal(
 
 const PlaceOrder = () => {
 
-    const { products, productsLoaded, cartItems, currency, couponCode, shippingAddress, setCartItems, saveOrder, clearCombo, cartMinimum } = useContext(ShopContext)
+    const { getProduct, productsLoaded, cartItems, currency, couponCode, shippingAddress, setCartItems, saveOrder, clearCombo, cartMinimum } = useContext(ShopContext)
     const { subtotal, comboDiscount, discountPct, couponDiscount, platformFee, total, combos } = useOrderTotals()
     const navigate = useNavigate()
     const [confirming, setConfirming] = useState(false)
@@ -67,7 +67,7 @@ const PlaceOrder = () => {
     const collectLineItems = () => {
         const lines = []
         for (const itemId in cartItems) {
-            const product = products.find(p => p._id === itemId)
+            const product = getProduct(itemId)
             if (!product) continue
             for (const size in cartItems[itemId]) {
                 const quantity = cartItems[itemId][size]
@@ -78,6 +78,11 @@ const PlaceOrder = () => {
                         name: formatProductName(product),
                         image: product.image[0],
                         isCustom: !!product.isCustom,
+                        // Uploaded artwork travels with the order: the id points
+                        // at the stored originals, which are attached when the
+                        // order is sent on WhatsApp.
+                        customPosterId: product.customPosterId || null,
+                        fileNames: product.fileNames || null,
                         size,
                         quantity,
                         price,
@@ -94,8 +99,10 @@ const PlaceOrder = () => {
 
         lineItems.forEach(item => {
             lines.push(`• ${item.name} (Size ${item.size}) x${item.quantity} — ${currency}${item.lineTotal}`)
-            if (item.isCustom) {
-                lines.push('   ↳ artwork: sending the image in this chat')
+            if (item.isCustom && item.fileNames?.length) {
+                lines.push(`   ↳ artwork attached: ${item.fileNames.join(', ')}`)
+            } else if (item.isCustom) {
+                lines.push('   ↳ artwork attached in this chat')
             }
         })
 
@@ -134,6 +141,10 @@ const PlaceOrder = () => {
             address: shippingAddress,
             isChennai: isChennaiAddress(shippingAddress),
             whatsappUrl,
+            // The message on its own, so the confirmation page can share it
+            // alongside the artwork files.
+            message: buildWhatsappMessage(reference, lineItems),
+            customPosterIds: lineItems.filter(item => item.customPosterId).map(item => item.customPosterId),
             totals: {
                 subtotal, comboDiscount, discountPct, couponDiscount, platformFee, total,
                 combos: combos.map(entry => ({

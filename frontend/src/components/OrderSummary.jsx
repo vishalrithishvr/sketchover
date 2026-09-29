@@ -27,13 +27,13 @@ export const useOrderTotals = () => {
 // Bordered summary panel. `action` is a render prop so each step supplies its own
 // button while the terms checkbox stays owned here.
 const OrderSummary = ({ showItems = false, action }) => {
-  const { products, cartItems, currency, changeQuantity } = useContext(ShopContext)
+  const { getProduct, cartItems, currency, changeQuantity } = useContext(ShopContext)
   const [agreed, setAgreed] = useState(false)
   const { subtotal, couponDiscount, discountPct, platformFee, total, combos } = useOrderTotals()
 
   const lineItems = []
   for (const itemId in cartItems) {
-    const product = products.find(p => p._id === itemId)
+    const product = getProduct(itemId)
     if (!product) continue
     for (const size in cartItems[itemId]) {
       if (cartItems[itemId][size] > 0) {

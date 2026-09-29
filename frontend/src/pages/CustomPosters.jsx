@@ -18,12 +18,11 @@ const CustomPosters = () => {
   const [sortType, setSortType] = useState('relavent')
   const [page, setPage] = useState(1)
 
-  // The custom product plus anything else offered as personalised work.
+  // Personalised work is made to order from an upload, so the catalogue's
+  // stand-in product is not listed — the uploader below is the way in. Anything
+  // else filed under Custom still shows.
   const items = useMemo(() => {
-    let list = products.filter(p => p.isCustom || p.category === 'Custom')
-
-    // Nothing custom in the catalogue yet? show the split sets as the closest thing.
-    if (list.length === 0) list = products.filter(p => p.subCategory === 'Split')
+    let list = products.filter(p => (p.isCustom || p.category === 'Custom') && p._id !== 'sk100')
 
     if (sizeFilter) list = list.filter(p => p.sizes.includes(sizeFilter))
 
@@ -50,6 +49,10 @@ const CustomPosters = () => {
         <Title text1={'CUSTOM POSTERS'} />
       </div>
 
+      <CustomPosterSender />
+
+      {items.length > 0 && (
+      <>
       <div className='flex items-center justify-between gap-4 flex-wrap text-xs sm:text-sm mb-8'>
         <div className='flex items-center gap-3'>
           <span className='text-gray-500'>Filter:</span>
@@ -87,8 +90,8 @@ const CustomPosters = () => {
       </div>
 
       <Pagination page={page} pageCount={pageCount} onChange={setPage} className='mt-12' />
-
-      <CustomPosterSender />
+      </>
+      )}
 
       <CustomerReviews />
       <NewsletterBox />

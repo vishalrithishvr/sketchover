@@ -12,7 +12,7 @@ const HIDDEN_ON = ['/cart', '/shipping', '/place-order', '/order-placed']
 // the basket with the newest poster called out, and carries the combo nudge.
 const CartDrawer = () => {
   const {
-    cartItems, products, productsById, currency, changeQuantity, updateQuantity,
+    cartItems, getProduct, currency, changeQuantity, updateQuantity,
     getCartAmount, getComboDiscount, comboFocus, cartMinimum,
     cartDrawerOpen, closeCartDrawer, lastAdded,
   } = useContext(ShopContext)
@@ -39,7 +39,7 @@ const CartDrawer = () => {
 
   const lines = []
   for (const itemId in cartItems) {
-    const product = productsById?.get(itemId) || products.find(p => p._id === itemId)
+    const product = getProduct(itemId)
     if (!product) continue
     for (const size in cartItems[itemId]) {
       const quantity = cartItems[itemId][size]
@@ -95,13 +95,22 @@ const CartDrawer = () => {
                     key={line.product._id + line.size}
                     className={`flex gap-3 pb-4 border-b border-gray-100 last:border-0 ${justAdded ? 'animate-rise-in' : ''}`}
                   >
-                    <Link to={`/product/${line.product._id}`} onClick={closeCartDrawer} className='shrink-0'>
+                    {/* Uploaded artwork has no catalogue page to link to. */}
+                    {line.product.isCustom ? (
                       <img
                         src={line.product.image[0]}
                         alt=''
-                        className={`w-16 aspect-[176/206] object-cover bg-gray-100 ${justAdded ? 'ring-2 ring-brand' : ''}`}
+                        className={`w-16 shrink-0 aspect-[176/206] object-cover bg-gray-100 ${justAdded ? 'ring-2 ring-brand' : ''}`}
                       />
-                    </Link>
+                    ) : (
+                      <Link to={`/product/${line.product._id}`} onClick={closeCartDrawer} className='shrink-0'>
+                        <img
+                          src={line.product.image[0]}
+                          alt=''
+                          className={`w-16 aspect-[176/206] object-cover bg-gray-100 ${justAdded ? 'ring-2 ring-brand' : ''}`}
+                        />
+                      </Link>
+                    )}
 
                     <div className='flex-1 min-w-0'>
                       {justAdded && (
@@ -109,13 +118,17 @@ const CartDrawer = () => {
                           <CheckIcon className='w-3 h-3' /> Just added
                         </p>
                       )}
-                      <Link
-                        to={`/product/${line.product._id}`}
-                        onClick={closeCartDrawer}
-                        className='text-sm leading-snug line-clamp-2 hover:text-brand transition-colors'
-                      >
-                        {formatProductName(line.product)}
-                      </Link>
+                      {line.product.isCustom ? (
+                        <p className='text-sm leading-snug line-clamp-2'>{formatProductName(line.product)}</p>
+                      ) : (
+                        <Link
+                          to={`/product/${line.product._id}`}
+                          onClick={closeCartDrawer}
+                          className='text-sm leading-snug line-clamp-2 hover:text-brand transition-colors'
+                        >
+                          {formatProductName(line.product)}
+                        </Link>
+                      )}
                       <p className='text-[11px] text-gray-500 mt-0.5'>Size: {line.size}</p>
 
                       <div className='flex items-center justify-between gap-2 mt-2'>

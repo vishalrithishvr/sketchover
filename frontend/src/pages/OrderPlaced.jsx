@@ -1,8 +1,9 @@
-import React, { useContext, useEffect } from 'react'
+import React, { useContext, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ShopContext } from '../context/ShopContext'
 import Title from '../components/Title'
 import NewsletterBox from '../components/NewsletterBox'
+import { getFilesAsFiles } from '../utils/customPosterStore'
 import { CheckIcon, DeliveryIcon, WhatsappIcon } from '../components/icons/NavIcons'
 
 const dayMs = 24 * 60 * 60 * 1000
@@ -18,13 +19,36 @@ const OrderPlaced = () => {
   const { lastOrder, currency } = useContext(ShopContext)
   const navigate = useNavigate()
 
+  // The artwork is loaded up front so the send button can hand it to the share
+  // sheet inside the tap itself — Safari drops the gesture across an await.
+  const [attachments, setAttachments] = useState([])
+  const [sending, setSending] = useState(false)
+  const [sendNote, setSendNote] = useState('')
+
+  const posterIds = lastOrder?.customPosterIds || []
+
   useEffect(() => {
     if (!lastOrder) navigate('/')
   }, [lastOrder])
 
+  useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      const files = []
+      for (const id of posterIds) {
+        try {
+          files.push(...await getFilesAsFiles(id))
+        } catch { /* the artwork is no longer on this device */ }
+      }
+      if (!cancelled) setAttachments(files)
+    }
+    if (posterIds.length) load()
+    return () => { cancelled = true }
+  }, [posterIds.join(',')])
+
   if (!lastOrder) return null
 
-  const { reference, placedAt, items = [], address = {}, totals = {}, whatsappUrl, isChennai } = lastOrder
+  const { reference, placedAt, items = [], address = {}, totals = {}, whatsappUrl, message, isChennai } = lastOrder
 
   // City and district are frequently the same place — say it once.
   const addressLine = [...new Set([address.city, address.district, address.state, address.postalCode].filter(Boolean))].join(', ')
@@ -32,6 +56,46 @@ const OrderPlaced = () => {
   const dispatchBy = placedAt + dayMs
   const from = placedAt + minDays * dayMs
   const to = placedAt + maxDays * dayMs
+
+  // Send the order, with the uploaded artwork attached at full quality.
+  const sendOnWhatsapp = async () => {
+    if (sending) return
+    setSending(true)
+    setSendNote('')
+
+    const text = message || ''
+    const shareData = { files: attachments, text, title: `Sketchover order ${reference}` }
+
+    try {
+      if (attachments.length > 0 && navigator.canShare?.(shareData)) {
+        await navigator.share(shareData)
+        setSendNote('Shared — choose Sketchover in WhatsApp to finish.')
+        return
+      }
+
+      // No share sheet: save the originals, then open the chat with the order.
+      attachments.forEach((file) => {
+        const url = URL.createObjectURL(file)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = file.name
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+        setTimeout(() => URL.revokeObjectURL(url), 60000)
+      })
+      if (attachments.length > 0) {
+        setSendNote(`Your ${attachments.length === 1 ? 'image has' : 'images have'} been saved — attach ${attachments.length === 1 ? 'it' : 'them'} in the chat that just opened.`)
+      }
+      window.open(whatsappUrl, '_blank')
+    } catch (error) {
+      if (error?.name !== 'AbortError') {
+        setSendNote('WhatsApp would not open — your order is saved on this page.')
+      }
+    } finally {
+      setSending(false)
+    }
+  }
 
   const timeline = [
     { label: 'Order placed', date: formatDate(placedAt), done: true },
@@ -58,19 +122,24 @@ const OrderPlaced = () => {
           Order reference <span className='text-black font-medium'>{reference}</span> · placed {formatDate(placedAt)}
         </p>
         <p className='text-sm text-gray-500 mt-2 max-w-lg mx-auto'>
-          Your order is saved on this page. Send it to us on WhatsApp and we will share the payment link and start printing.
+          Your order is saved on this page. Send it to us on WhatsApp{posterIds.length > 0 && ' with your artwork'} and
+          we will share the payment link and start printing.
         </p>
         {whatsappUrl && (
-          <a
-            href={whatsappUrl}
-            target='_blank'
-            rel='noreferrer'
-            className='inline-flex items-center gap-2 bg-whatsapp text-white text-sm px-6 py-3 mt-5 hover:opacity-90 transition-opacity'
+          <button
+            onClick={sendOnWhatsapp}
+            disabled={sending}
+            className='inline-flex items-center gap-2 bg-whatsapp text-white text-sm px-6 py-3 mt-5 hover:opacity-90 transition-opacity disabled:opacity-60'
           >
             <WhatsappIcon className='w-4 h-4' />
-            Send order on WhatsApp
-          </a>
+            {sending
+              ? 'Opening WhatsApp…'
+              : attachments.length > 0
+                ? `Send order + ${attachments.length} ${attachments.length === 1 ? 'image' : 'images'} on WhatsApp`
+                : 'Send order on WhatsApp'}
+          </button>
         )}
+        {sendNote && <p className='text-xs text-gray-500 mt-3 max-w-md mx-auto'>{sendNote}</p>}
       </div>
 
       <div className='grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-10 lg:gap-16'>

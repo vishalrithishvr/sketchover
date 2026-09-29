@@ -13,7 +13,7 @@ import { PlusIcon, MinusIcon, CloseIcon } from '../components/icons/NavIcons';
 const Cart = () => {
 
   const {
-    products, productsLoaded, cartItems, updateQuantity, changeQuantity, navigate, currency,
+    products, getProduct, productsLoaded, cartItems, updateQuantity, changeQuantity, navigate, currency,
     comboFocus, cartMinimum,
   } = useContext(ShopContext);
   const [cartData, setCartData] = useState([]);
@@ -59,26 +59,46 @@ const Cart = () => {
           <ComboGuide />
 
           {cartData.map((item, index) => {
-            const productData = products.find((product) => product._id === item._id);
+            const productData = getProduct(item._id);
             if (!productData) return null;
             const { price, originalPrice } = getSizePrice(item.size, productData.subCategory);
 
             return (
               <div key={index} className='flex gap-4 sm:gap-6 py-6 border-b border-gray-200'>
-                {/* Tapping the poster goes straight to its description page. */}
-                <Link to={`/product/${productData._id}`} className='shrink-0 group'>
-                  <img
-                    className='w-20 sm:w-[110px] aspect-[176/206] object-cover bg-gray-100 group-hover:opacity-90 transition-opacity'
-                    src={productData.image[0]}
-                    alt={formatProductName(productData)}
-                  />
-                </Link>
+                {/* Tapping a catalogue poster goes to its description page;
+                    uploaded artwork has no page of its own. */}
+                {productData.isCustom ? (
+                  <div className='shrink-0'>
+                    <img
+                      className='w-20 sm:w-[110px] aspect-[176/206] object-cover bg-gray-100'
+                      src={productData.image[0]}
+                      alt={formatProductName(productData)}
+                    />
+                  </div>
+                ) : (
+                  <Link to={`/product/${productData._id}`} className='shrink-0 group'>
+                    <img
+                      className='w-20 sm:w-[110px] aspect-[176/206] object-cover bg-gray-100 group-hover:opacity-90 transition-opacity'
+                      src={productData.image[0]}
+                      alt={formatProductName(productData)}
+                    />
+                  </Link>
+                )}
 
                 <div className='flex-1 min-w-0'>
                   <div className='flex items-start justify-between gap-3'>
-                    <Link to={`/product/${productData._id}`} className='text-sm sm:text-base hover:text-brand transition-colors'>
-                      {formatProductName(productData)}
-                    </Link>
+                    {productData.isCustom ? (
+                      <div className='min-w-0'>
+                        <p className='text-sm sm:text-base'>{formatProductName(productData)}</p>
+                        <p className='text-[11px] text-gray-500 mt-0.5'>
+                          Your upload — sent with the order on WhatsApp
+                        </p>
+                      </div>
+                    ) : (
+                      <Link to={`/product/${productData._id}`} className='text-sm sm:text-base hover:text-brand transition-colors'>
+                        {formatProductName(productData)}
+                      </Link>
+                    )}
                     <button onClick={() => updateQuantity(item._id, item.size, 0)} aria-label='Remove' className='text-gray-400 hover:text-black shrink-0'>
                       <CloseIcon className='w-4 h-4' />
                     </button>

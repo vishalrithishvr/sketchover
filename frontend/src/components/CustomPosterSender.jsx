@@ -1,18 +1,22 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useContext, useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { ShopContext } from '../context/ShopContext'
 import { CUSTOM_SIZES, CUSTOM_POSTER_TYPES, getSizePrice } from '../assets/assets'
-import { UploadIcon, WhatsappIcon, CloseIcon, CheckIcon } from './icons/NavIcons'
-
-export const WHATSAPP_NUMBER = '918870333236'
+import { UploadIcon, CloseIcon, CheckIcon, CartIcon } from './icons/NavIcons'
 
 // Printable area in inches, used to work out the true DPI of the artwork.
 const SIZE_INCHES = {
   A6: [4.13, 5.83], A5: [5.83, 8.27], A4: [8.27, 11.69], A3: [11.69, 16.54], 'A3+': [12.99, 18.37],
 }
 
-// Files go to the studio exactly as the shopper picked them — never resized,
-// re-encoded or cropped — so nothing is lost: no softening, no colour shift, and
-// an animated GIF keeps every frame.
+// Uploads join the basket like any other poster, so a personalised print can be
+// ordered alongside catalogue posters in one go. The files are kept exactly as
+// the shopper picked them — never resized, re-encoded or cropped — and travel
+// with the order to WhatsApp at checkout.
 const CustomPosterSender = ({ defaultSize = 'A4', compact = false }) => {
+
+  const { addCustomPoster, addToCart, openCartDrawer } = useContext(ShopContext)
+  const [adding, setAdding] = useState(false)
 
   const [type, setType] = useState(CUSTOM_POSTER_TYPES[0])
   const [picks, setPicks] = useState([])          // { file, url, dimensions }
@@ -88,60 +92,28 @@ const CustomPosterSender = ({ defaultSize = 'A4', compact = false }) => {
     return { dpi, tone: 'poor', label: `Low resolution — ${dpi} DPI at ${size}. A bigger file prints sharper.` }
   })()
 
-  const buildMessage = () => {
-    const { price } = getSizePrice(size, 'Single')
-    return [
-      `Hi Sketchover! I would like to order a ${type.name}:`,
-      '',
-      `• Type: ${type.name}`,
-      `• Size: ${size}`,
-      `• Price: ₹${price}`,
-      ...picks.map((p, i) => `• Image ${i + 1}: ${p.file.name}${p.dimensions ? ` (${p.dimensions.width} × ${p.dimensions.height} px)` : ''}`),
-      '',
-    ].join('\n')
-  }
-
-  // Each download gets its own short-lived URL. Reusing the preview URL risks
-  // it being revoked while the browser is still writing the file out.
-  const downloadOriginals = () => {
-    picks.forEach((pick) => {
-      const url = URL.createObjectURL(pick.file)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = pick.file.name
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      setTimeout(() => URL.revokeObjectURL(url), 60000)
-    })
-  }
-
-  const send = async () => {
-    if (!ready) return
+  const addToOrder = async () => {
+    if (!ready || adding) return
     setError('')
-    const text = buildMessage()
-    const files = picks.map(p => p.file)
-    const shareData = { files, title: `Sketchover ${type.name}`, text }
-
-    // Phones can hand WhatsApp the original files directly.
-    if (navigator.canShare?.(shareData)) {
-      try {
-        await navigator.share(shareData)
-        setSent(true)
-        return
-      } catch (err) {
-        if (err?.name === 'AbortError') return
-        setError('Sharing was blocked — sending the files the other way instead.')
-      }
+    setAdding(true)
+    try {
+      const measured = picks.filter(p => p.dimensions)
+      const poster = await addCustomPoster({
+        type: type.name,
+        size,
+        files: picks.map(p => p.file),
+        dimensions: measured[0]?.dimensions || null,
+      })
+      if (!poster) return
+      await addToCart(`custom:${poster.id}`, poster.size)
+      setSent(true)
+      openCartDrawer()
+    } catch (err) {
+      console.log(err)
+      setError('That could not be added — try again.')
+    } finally {
+      setAdding(false)
     }
-
-    // Everywhere else: hand over the untouched files, then open the chat.
-    downloadOriginals()
-    window.open(
-      `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text + `Attaching the ${needed > 1 ? 'images' : 'image'} I just saved.`)}`,
-      '_blank'
-    )
-    setSent(true)
   }
 
   const { price, originalPrice } = getSizePrice(size, 'Single')
@@ -150,10 +122,11 @@ const CustomPosterSender = ({ defaultSize = 'A4', compact = false }) => {
     <div className={compact ? '' : 'my-16'}>
       {!compact && (
         <>
-          <p className='heading-font uppercase tracking-[0.06em] text-2xl sm:text-3xl text-center'>Send us your artwork</p>
+          <p className='heading-font uppercase tracking-[0.06em] text-2xl sm:text-3xl text-center'>Make your own poster</p>
           <p className='text-center text-xs sm:text-sm text-gray-500 mt-2 mb-8 max-w-xl mx-auto'>
-            Pick what you want made, add your photos, and send them straight to Sketchover on WhatsApp. Files go
-            across exactly as they are — full resolution, original frames — so nothing is lost before it is printed.
+            Pick what you want made and add your photos — it goes into your cart like any other poster, so you can
+            keep shopping and order everything together. Your files travel with the order exactly as they are:
+            full resolution, original frames, nothing lost before it is printed.
           </p>
         </>
       )}
@@ -276,28 +249,35 @@ const CustomPosterSender = ({ defaultSize = 'A4', compact = false }) => {
 
           <div className='px-5 pb-5'>
             {sent ? (
-              <div className='flex items-center gap-3 border border-green-600 bg-green-50 px-4 py-3'>
-                <CheckIcon className='w-4 h-4 text-green-700 shrink-0' />
+              <div className='flex items-start gap-3 border border-green-600 bg-green-50 px-4 py-3'>
+                <CheckIcon className='w-4 h-4 text-green-700 mt-0.5 shrink-0' />
                 <div className='text-sm'>
-                  <p className='text-green-800'>{type.name} sent to Sketchover on WhatsApp.</p>
-                  <button onClick={() => setPicks([])} className='text-green-700/80 text-xs underline mt-0.5'>Send another</button>
+                  <p className='text-green-800'>{type.name} added to your cart.</p>
+                  <p className='text-green-700/80 text-xs mt-0.5'>
+                    Your {needed > 1 ? 'images travel' : 'image travels'} with the order when you check out.{' '}
+                    <Link to='/cart' className='underline'>View cart</Link>
+                    {' · '}
+                    <button onClick={() => { setPicks([]); setSent(false) }} className='underline'>Make another</button>
+                  </p>
                 </div>
               </div>
             ) : (
               <>
                 <button
-                  onClick={send}
-                  disabled={!ready}
-                  className='w-full bg-whatsapp text-white py-3 text-sm flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:bg-gray-400 disabled:cursor-not-allowed'
+                  onClick={addToOrder}
+                  disabled={!ready || adding}
+                  className='w-full bg-black text-white py-3 text-sm flex items-center justify-center gap-2 hover:bg-brand transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed'
                 >
-                  <WhatsappIcon className='w-4 h-4' />
-                  {ready
-                    ? `Send ${type.name} on WhatsApp`
-                    : `Add ${needed - picks.length} more image${needed - picks.length > 1 ? 's' : ''}`}
+                  <CartIcon className='w-4 h-4' />
+                  {adding
+                    ? 'Adding…'
+                    : ready
+                      ? `Add ${type.name} to cart`
+                      : `Add ${needed - picks.length} more image${needed - picks.length > 1 ? 's' : ''}`}
                 </button>
                 <p className='text-[11px] text-gray-400 mt-2 text-center'>
-                  On a phone the {needed > 1 ? 'images are' : 'image is'} attached for you. On a computer
-                  {needed > 1 ? ' they download' : ' it downloads'} first, then attach in the chat.
+                  Keep shopping afterwards — your {needed > 1 ? 'photos are' : 'photo is'} attached to the WhatsApp
+                  order at checkout, at full quality.
                 </p>
               </>
             )}
