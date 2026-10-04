@@ -1,24 +1,19 @@
 import express from 'express'
-import {placeOrder, placeOrderStripe, placeOrderRazorpay, allOrders, userOrders, updateStatus, verifyStripe, verifyRazorpay} from '../controllers/orderController.js'
-import adminAuth  from '../middleware/adminAuth.js'
+import { placeOrder, allOrders, userOrders, updateStatus, trackOrder } from '../controllers/orderController.js'
+import adminAuth from '../middleware/adminAuth.js'
 import authUser from '../middleware/auth.js'
 
 const orderRouter = express.Router()
 
-// Admin Features
-orderRouter.post('/list',adminAuth,allOrders)
-orderRouter.post('/status',adminAuth,updateStatus)
+// Admin
+orderRouter.post('/list', adminAuth, allOrders)
+orderRouter.post('/status', adminAuth, updateStatus)
 
-// Payment Features
-orderRouter.post('/place',authUser,placeOrder)
-orderRouter.post('/stripe',authUser,placeOrderStripe)
-orderRouter.post('/razorpay',authUser,placeOrderRazorpay)
+// Storefront — guests can order, so this one is open.
+orderRouter.post('/place', placeOrder)
+orderRouter.post('/track', trackOrder)
 
-// User Feature 
-orderRouter.post('/userorders',authUser,userOrders)
-
-// verify payment
-orderRouter.post('/verifyStripe',authUser, verifyStripe)
-orderRouter.post('/verifyRazorpay',authUser, verifyRazorpay)
+// Signed-in customers
+orderRouter.post('/userorders', authUser, userOrders)
 
 export default orderRouter

@@ -7,7 +7,7 @@ import { PlusIcon, MinusIcon, HeartIcon } from './icons/NavIcons'
 const ProductItem = ({ product, theme = 'light' }) => {
 
     const { addToCart, changeQuantity, cartItems, wishlist, toggleWishlist } = useContext(ShopContext);
-    const { _id: id, image, price, originalPrice, sizes, isCustom } = product;
+    const { _id: id, image, price, originalPrice, sizes, isCustom, outOfStock, soldOutSizes = [] } = product;
     const isDark = theme === 'dark';
     const hasDiscount = originalPrice && originalPrice > price;
     const displayName = formatProductName(product);
@@ -17,7 +17,9 @@ const ProductItem = ({ product, theme = 'light' }) => {
     // the shopper can build a combo without leaving the listing.
     const lines = cartItems[id] || {};
     const inCart = Object.values(lines).reduce((sum, qty) => sum + (qty > 0 ? qty : 0), 0);
-    const defaultSize = sizes?.includes(DEFAULT_SIZE) ? DEFAULT_SIZE : sizes?.[0];
+    // Pick a size that is actually in stock.
+    const sellable = (sizes || []).filter(size => !soldOutSizes.includes(size));
+    const defaultSize = sellable.includes(DEFAULT_SIZE) ? DEFAULT_SIZE : sellable[0] || sizes?.[0];
     // Step the size that is actually in the basket; fall back to the default one.
     const sizeInCart = Object.keys(lines).find(size => lines[size] > 0 && size === defaultSize)
         || Object.keys(lines).find(size => lines[size] > 0)
@@ -56,7 +58,9 @@ const ProductItem = ({ product, theme = 'light' }) => {
           loading='lazy'
           decoding='async'
         />
-        {(hasDiscount || isCustom) && (
+        {outOfStock ? (
+          <span className='absolute top-0 right-0 bg-gray-800 text-white text-[10px] px-3 py-1'>Sold out</span>
+        ) : (hasDiscount || isCustom) && (
           <span className='absolute top-0 right-0 bg-black text-white text-[10px] px-3 py-1'>
             {isCustom ? 'Custom' : 'Sale'}
           </span>
@@ -120,9 +124,10 @@ const ProductItem = ({ product, theme = 'light' }) => {
         <button
           type='button'
           onClick={quickAdd}
-          className={`mt-2 w-full text-[11px] sm:text-xs py-2 transition-colors ${isDark ? 'bg-white text-black hover:bg-brand hover:text-white' : 'bg-black text-white hover:bg-brand'}`}
+          disabled={outOfStock}
+          className={`mt-2 w-full text-[11px] sm:text-xs py-2 transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed ${isDark ? 'bg-white text-black hover:bg-brand hover:text-white' : 'bg-black text-white hover:bg-brand'}`}
         >
-          Add to Cart
+          {outOfStock ? 'Sold out' : 'Add to Cart'}
         </button>
       )}
     </Link>

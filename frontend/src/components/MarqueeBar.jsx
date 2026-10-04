@@ -1,4 +1,5 @@
-import React from 'react'
+import React, { useContext } from 'react'
+import { ShopContext } from '../context/ShopContext'
 
 export const MARQUEE_TEXT = 'Free Delivery from ₹399'
 
@@ -15,9 +16,11 @@ export const RIBBON_MESSAGES = [
   'Sunday = Fandom Fun',
 ]
 
-// Top announcement strip.
-const MarqueeBar = ({ messages = MARQUEE_MESSAGES }) => {
-  const items = new Array(4).fill(messages).flat()
+// Top announcement strip. The studio can reword it from the admin panel.
+const MarqueeBar = ({ messages }) => {
+  const { siteSettings } = useContext(ShopContext)
+  const live = messages || (siteSettings?.marqueeMessages?.length ? siteSettings.marqueeMessages : MARQUEE_MESSAGES)
+  const items = new Array(4).fill(live).flat()
 
   return (
     <div className='bg-black text-white overflow-hidden whitespace-nowrap py-2 text-[11px] sm:text-xs tracking-wide'>
@@ -41,8 +44,10 @@ const MarqueeBar = ({ messages = MARQUEE_MESSAGES }) => {
 // a 3deg slant climbs ~100vw * tan(3deg) across the screen — otherwise the
 // wrapper clips the band and its own straight edges show up as the border,
 // which reads as two non-parallel lines.
-export const DiagonalRibbon = ({ messages = RIBBON_MESSAGES }) => {
-  const items = new Array(6).fill(messages).flat()
+export const DiagonalRibbon = ({ messages }) => {
+  const { siteSettings } = useContext(ShopContext)
+  const live = messages || (siteSettings?.ribbonMessages?.length ? siteSettings.ribbonMessages : RIBBON_MESSAGES)
+  const items = new Array(6).fill(live).flat()
 
   return (
     <div className='relative my-14 h-[clamp(105px,13vw,180px)] bleed-full overflow-hidden' aria-hidden='true'>

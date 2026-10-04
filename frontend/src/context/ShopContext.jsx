@@ -40,13 +40,40 @@ const ShopContextProvider = (props) => {
     const [wishlist, setWishlist] = useState(() => readStored('wishlist', []))
     const navigate = useNavigate();
 
+    // Wording and media the studio edits in the admin panel. The storefront
+    // keeps working on its built-in copy when the API is unreachable.
+    const [siteSettings, setSiteSettings] = useState(null)
+    const [mediaBySlot, setMediaBySlot] = useState({})
+
+    useEffect(() => {
+        let cancelled = false
+
+        const loadSite = async () => {
+            try {
+                const [settings, media] = await Promise.all([
+                    axios.get(backendUrl + '/api/admin/settings').catch(() => null),
+                    axios.get(backendUrl + '/api/media/public').catch(() => null),
+                ])
+                if (cancelled) return
+                if (settings?.data?.success) setSiteSettings(settings.data.settings)
+                if (media?.data?.success) setMediaBySlot(media.data.media || {})
+            } catch { /* the built-in copy stands in */ }
+        }
+
+        loadSite()
+        return () => { cancelled = true }
+    }, [backendUrl])
+
     const [shippingAddress, setShippingAddress] = useState(() => readStored('shippingAddress', {}))
     const [couponCode, setCouponCode] = useState(() => readStored('couponCode', ''))
+    const [couponPercent, setCouponPercent] = useState(() => readStored('couponPercent', 0))
+    const [couponError, setCouponError] = useState('')
 
     // Autosave. Each of these is small, so writing on every change is cheap.
     useEffect(() => { writeStored('cartItems', cartItems) }, [cartItems])
     useEffect(() => { writeStored('shippingAddress', shippingAddress) }, [shippingAddress])
     useEffect(() => { writeStored('couponCode', couponCode) }, [couponCode])
+    useEffect(() => { writeStored('couponPercent', couponPercent) }, [couponPercent])
     useEffect(() => { writeStored('wishlist', wishlist) }, [wishlist])
 
     // The order just placed, kept so the confirmation page survives a refresh.
@@ -183,6 +210,35 @@ const ShopContextProvider = (props) => {
         isCustom: true,
         date: poster.createdAt,
     })), [customPosters, customPreviews])
+
+    // Codes live in the database now, so the studio can add one without a deploy.
+    const applyCoupon = useCallback(async (code, orderValue) => {
+        const trimmed = (code || '').trim().toUpperCase()
+        setCouponCode(trimmed)
+        setCouponError('')
+
+        if (!trimmed) {
+            setCouponPercent(0)
+            return { success: true, percent: 0 }
+        }
+
+        try {
+            const { data } = await axios.post(backendUrl + '/api/admin/coupon/validate', { code: trimmed, orderValue })
+            if (data.success) {
+                setCouponPercent(data.percent)
+                return { success: true, percent: data.percent }
+            }
+            setCouponPercent(0)
+            setCouponError(data.message || "That code isn't valid.")
+            return { success: false, message: data.message }
+        } catch {
+            // Offline: fall back to the codes the storefront ships with.
+            const offline = { SKO10: 10, SKO5: 5, WELCOME5: 5, STUDENT5: 5 }[trimmed] || 0
+            setCouponPercent(offline)
+            if (!offline) setCouponError("That code isn't valid.")
+            return { success: !!offline, percent: offline }
+        }
+    }, [backendUrl])
 
     const toggleWishlist = useCallback((itemId) => {
         setWishlist(prev => prev.includes(itemId) ? prev.filter(id => id !== itemId) : [...prev, itemId])
@@ -418,6 +474,7 @@ const ShopContextProvider = (props) => {
     // actually changed, not on every keystroke in the search box.
     const value = useMemo(() => ({
         products, productsById, getProduct, productsLoaded, currency, delivery_fee,
+        siteSettings, mediaBySlot,
         customPosters, customProducts, addCustomPoster, removeCustomPoster,
         search, setSearch, showSearch, setShowSearch,
         cartItems, addToCart, setCartItems, updateQuantity, changeQuantity,
@@ -429,16 +486,17 @@ const ShopContextProvider = (props) => {
         setToken, token,
         wishlist, toggleWishlist,
         shippingAddress, setShippingAddress,
-        couponCode, setCouponCode,
+        couponCode, setCouponCode, couponPercent, couponError, applyCoupon,
         lastOrder, saveOrder,
     }), [
-        products, productsById, getProduct, productsLoaded, search, showSearch, cartItems,
+        products, productsById, getProduct, productsLoaded, siteSettings, mediaBySlot, search, showSearch, cartItems,
         customPosters, customProducts, addCustomPoster, removeCustomPoster,
         addToCart, updateQuantity, changeQuantity, getCartCount, getCartAmount, getComboDiscount,
         getComboQty, comboBySize, comboFocus, cartMinimum,
         cartDrawerOpen, openCartDrawer, closeCartDrawer, lastAdded,
         activeCombo, startCombo, clearCombo, navigate, backendUrl, token,
-        wishlist, toggleWishlist, shippingAddress, couponCode, lastOrder, saveOrder,
+        wishlist, toggleWishlist, shippingAddress, couponCode, couponPercent, couponError, applyCoupon,
+        lastOrder, saveOrder,
     ])
 
     return (

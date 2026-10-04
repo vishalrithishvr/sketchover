@@ -8,6 +8,7 @@ import Pagination from '../components/Pagination'
 import CustomerReviews from '../components/CustomerReviews'
 import CustomPosterSender from '../components/CustomPosterSender'
 import NewsletterBox from '../components/NewsletterBox'
+import MediaSlot from '../components/MediaSlot'
 import Reveal from '../components/Reveal'
 
 const PER_PAGE = 8
@@ -92,6 +93,8 @@ const CustomPosters = () => {
       <Pagination page={page} pageCount={pageCount} onChange={setPage} className='mt-12' />
       </>
       )}
+
+      <MediaSlot slot='custom-posters' columns={2} />
 
       <CustomerReviews />
       <NewsletterBox />

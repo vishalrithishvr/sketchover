@@ -5,6 +5,7 @@ import { getSizePrice, formatProductName, DEFAULT_SIZE, isComboEligible } from '
 import RelatedProducts from '../components/RelatedProducts';
 import LatestArrivalGrid from '../components/LatestArrivalGrid';
 import NewsletterBox from '../components/NewsletterBox';
+import MediaSlot from '../components/MediaSlot';
 import ComboOffer from '../components/ComboOffer';
 import CustomPosterSender from '../components/CustomPosterSender';
 import { PlusIcon, MinusIcon, HeartIcon } from '../components/icons/NavIcons';
@@ -100,15 +101,24 @@ const Product = () => {
           {/* Size */}
           <p className='text-sm text-gray-500 mt-6 mb-2'>Size</p>
           <div className='flex flex-wrap gap-2'>
-            {productData.sizes.map((item)=>(
-              <button
-                key={item}
-                onClick={()=>setSize(item)}
-                className={`min-w-[56px] py-2 px-4 text-sm border transition-colors ${item === size ? 'bg-gray-500 border-gray-500 text-white' : 'bg-transparent border-gray-300 text-black hover:border-gray-500'}`}
-              >
-                {item}
-              </button>
-            ))}
+            {productData.sizes.map((item)=>{
+              const soldOut = (productData.soldOutSizes || []).includes(item)
+              return (
+                <button
+                  key={item}
+                  onClick={()=>setSize(item)}
+                  disabled={soldOut}
+                  title={soldOut ? 'Sold out in this size' : undefined}
+                  className={`min-w-[56px] py-2 px-4 text-sm border transition-colors ${
+                    soldOut ? 'border-gray-200 text-gray-300 line-through cursor-not-allowed'
+                      : item === size ? 'bg-gray-500 border-gray-500 text-white'
+                      : 'bg-transparent border-gray-300 text-black hover:border-gray-500'
+                  }`}
+                >
+                  {item}
+                </button>
+              )
+            })}
           </div>
 
           {/* Qty */}
@@ -132,9 +142,10 @@ const Product = () => {
 
           <button
             onClick={()=>addToCart(productData._id,size,quantity)}
-            className='w-full bg-black text-white py-3 text-sm mt-3 hover:bg-brand transition-colors'
+            disabled={productData.outOfStock || (productData.soldOutSizes || []).includes(size)}
+            className='w-full bg-black text-white py-3 text-sm mt-3 hover:bg-brand transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed'
           >
-            Add to cart
+            {productData.outOfStock ? 'Sold out' : 'Add to cart'}
           </button>
 
           {inCart > 0 && (
@@ -164,6 +175,8 @@ const Product = () => {
       </div>
 
       <RelatedProducts category={productData.category} subCategory={productData.subCategory} currentId={productData._id} />
+
+      <MediaSlot slot='product-below' columns={2} />
 
       <LatestArrivalGrid excludeId={productData._id} />
 

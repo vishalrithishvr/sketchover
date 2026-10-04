@@ -6,10 +6,11 @@ import { PlusIcon, MinusIcon, ArrowRightIcon } from './icons/NavIcons'
 export const VALID_COUPONS = { SKO10: 10, SKO5: 5, WELCOME5: 5 }
 
 export const useOrderTotals = () => {
-  const { getCartAmount, getComboDiscount, comboBySize, couponCode } = useContext(ShopContext)
+  const { getCartAmount, getComboDiscount, comboBySize, couponCode, couponPercent } = useContext(ShopContext)
   const subtotal = getCartAmount()
   const comboDiscount = getComboDiscount()
-  const discountPct = VALID_COUPONS[couponCode.trim().toUpperCase()] || 0
+  // The percentage the server confirmed, or the built-in table when offline.
+  const discountPct = couponPercent || VALID_COUPONS[couponCode.trim().toUpperCase()] || 0
   const couponDiscount = Math.round((subtotal - comboDiscount) * discountPct / 100)
   // Goods value after every discount, then the flat platform fee on top. A
   // qualifying Buy 4 Get 8 basket lands on ₹356 + ₹4 = the ₹360 minimum.
@@ -115,13 +116,16 @@ const OrderSummary = ({ showItems = false, action }) => {
 
 // Coupon field that sits below the summary on the cart page.
 export const CouponBox = () => {
-  const { couponCode, setCouponCode } = useContext(ShopContext)
+  const { couponCode, applyCoupon, couponError } = useContext(ShopContext)
   const [input, setInput] = useState(couponCode)
-  const { discountPct } = useOrderTotals()
+  const [checking, setChecking] = useState(false)
+  const { discountPct, subtotal, comboDiscount } = useOrderTotals()
 
-  const apply = (e) => {
+  const apply = async (e) => {
     e.preventDefault()
-    setCouponCode(input)
+    setChecking(true)
+    await applyCoupon(input, Math.max(0, subtotal - comboDiscount))
+    setChecking(false)
   }
 
   return (
@@ -134,13 +138,18 @@ export const CouponBox = () => {
           placeholder='Coupon code'
           className='flex-1 bg-gray-100 px-4 py-3 text-sm outline-none'
         />
-        <button type='submit' aria-label='Apply coupon' className='bg-brand hover:bg-brand-dark text-white px-5 flex items-center justify-center transition-colors'>
+        <button
+          type='submit'
+          disabled={checking}
+          aria-label='Apply coupon'
+          className='bg-brand hover:bg-brand-dark text-white px-5 flex items-center justify-center transition-colors disabled:bg-gray-400'
+        >
           <ArrowRightIcon className='w-5 h-5' />
         </button>
       </form>
       {couponCode && (
         <p className={`text-xs mt-2 ${discountPct ? 'text-green-600' : 'text-gray-400'}`}>
-          {discountPct ? `${couponCode.toUpperCase()} applied — ${discountPct}% off` : 'That code isn\'t valid.'}
+          {discountPct ? `${couponCode.toUpperCase()} applied — ${discountPct}% off` : (couponError || "That code isn't valid.")}
         </p>
       )}
     </div>

@@ -9,6 +9,7 @@ import NewsletterBox from '../components/NewsletterBox'
 import { ShopContext } from '../context/ShopContext'
 import { getSizePrice, formatProductName } from '../assets/assets'
 import { isChennaiAddress } from '../utils/addressValidation'
+import axios from 'axios'
 
 const WHATSAPP_NUMBER = '918870333236'
 
@@ -40,7 +41,7 @@ const ConfirmingOverlay = () => createPortal(
 
 const PlaceOrder = () => {
 
-    const { getProduct, productsLoaded, cartItems, currency, couponCode, shippingAddress, setCartItems, saveOrder, clearCombo, cartMinimum } = useContext(ShopContext)
+    const { getProduct, productsLoaded, cartItems, currency, couponCode, shippingAddress, setCartItems, saveOrder, clearCombo, cartMinimum, backendUrl } = useContext(ShopContext)
     const { subtotal, comboDiscount, discountPct, couponDiscount, platformFee, total, combos } = useOrderTotals()
     const navigate = useNavigate()
     const [confirming, setConfirming] = useState(false)
@@ -152,6 +153,33 @@ const PlaceOrder = () => {
                 })),
             },
         })
+
+        // Book the order with the studio as well, so it shows up in the admin
+        // panel whether or not the WhatsApp message is ever sent. A backend
+        // that is down must not block the customer, so this is best-effort.
+        axios.post(`${backendUrl}/api/order/place`, {
+            reference,
+            items: lineItems.map(item => ({
+                sku: item.id?.startsWith('custom:') ? null : item.id,
+                name: item.name,
+                image: item.image,
+                size: item.size,
+                quantity: item.quantity,
+                price: item.price,
+                lineTotal: item.lineTotal,
+                isCustom: item.isCustom,
+                fileNames: item.fileNames || [],
+            })),
+            address: shippingAddress,
+            subtotal,
+            comboDiscount,
+            couponCode: couponCode?.trim().toUpperCase() || '',
+            couponDiscount,
+            platformFee,
+            amount: total,
+            isChennai: isChennaiAddress(shippingAddress),
+            paymentMethod: 'WhatsApp',
+        }).catch((error) => console.log('[order] not recorded:', error.message))
 
         setConfirming(true)
         timer.current = setTimeout(() => {

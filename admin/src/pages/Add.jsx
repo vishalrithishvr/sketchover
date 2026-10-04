@@ -1,148 +1,195 @@
 import React, { useState } from 'react'
-import {assets} from '../assets/assets'
-import axios from 'axios'
-import { backendUrl } from '../App'
+import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
+import { api } from '../api'
 
-const Add = ({token}) => {
+// Kept in step with the storefront's own lists.
+const CATEGORIES = ['Autosport', 'Anime', 'Sports', 'TV Series', 'Music', 'Video-Games', 'Motivate', 'Custom']
+const SIZES = ['A6', 'A5', 'A4', 'A3', 'A3+']
+const SIZE_PRICES = { A6: 29, A5: 49, A4: 89, A3: 109, 'A3+': 119 }
 
-  const [image1,setImage1] = useState(false)
-  const [image2,setImage2] = useState(false)
-  const [image3,setImage3] = useState(false)
-  const [image4,setImage4] = useState(false)
+const Field = ({ label, hint, children }) => (
+  <label className='block'>
+    <span className='block text-xs text-gray-500 mb-1'>{label}</span>
+    {children}
+    {hint && <span className='block text-[11px] text-gray-400 mt-1'>{hint}</span>}
+  </label>
+)
 
-   const [name, setName] = useState("");
-   const [description, setDescription] = useState("");
-   const [price, setPrice] = useState("");
-   const [category, setCategory] = useState("Autosport");
-   const [subCategory, setSubCategory] = useState("Single");
-   const [bestseller, setBestseller] = useState(false);
-   const [sizes, setSizes] = useState([]);
+const Add = ({ token }) => {
+  const navigate = useNavigate()
+  const [images, setImages] = useState([null, null, null, null])
+  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState({
+    name: '',
+    description: '',
+    category: 'Autosport',
+    subCategory: 'Single',
+    price: SIZE_PRICES.A4,
+    originalPrice: 129,
+    sizes: ['A6', 'A5', 'A4', 'A3', 'A3+'],
+    panels: '',
+    orientation: 'vertical',
+    bestseller: false,
+    tags: '',
+    stockPerSize: 25,
+  })
 
-   const onSubmitHandler = async (e) => {
-    e.preventDefault();
+  const update = (field, value) => setForm(prev => ({ ...prev, [field]: value }))
 
-    try {
-      
-      const formData = new FormData()
+  const toggleSize = (size) => setForm(prev => ({
+    ...prev,
+    sizes: prev.sizes.includes(size) ? prev.sizes.filter(s => s !== size) : [...prev.sizes, size],
+  }))
 
-      formData.append("name",name)
-      formData.append("description",description)
-      formData.append("price",price)
-      formData.append("category",category)
-      formData.append("subCategory",subCategory)
-      formData.append("bestseller",bestseller)
-      formData.append("sizes",JSON.stringify(sizes))
+  const onSubmit = async (e) => {
+    e.preventDefault()
+    if (!images.some(Boolean)) return toast.error('Add at least one image.')
+    if (form.sizes.length === 0) return toast.error('Pick at least one size.')
 
-      image1 && formData.append("image1",image1)
-      image2 && formData.append("image2",image2)
-      image3 && formData.append("image3",image3)
-      image4 && formData.append("image4",image4)
-
-      const response = await axios.post(backendUrl + "/api/product/add",formData,{headers:{token}})
-
-      if (response.data.success) {
-        toast.success(response.data.message)
-        setName('')
-        setDescription('')
-        setImage1(false)
-        setImage2(false)
-        setImage3(false)
-        setImage4(false)
-        setPrice('')
-      } else {
-        toast.error(response.data.message)
-      }
-
-    } catch (error) {
-      console.log(error);
-      toast.error(error.message)
+    setSaving(true)
+    const data = new FormData()
+    data.append('name', form.name)
+    data.append('description', form.description)
+    data.append('category', form.category)
+    data.append('subCategory', form.subCategory)
+    data.append('price', form.price)
+    data.append('originalPrice', form.originalPrice)
+    data.append('sizes', JSON.stringify(form.sizes))
+    data.append('bestseller', form.bestseller)
+    data.append('tags', form.tags)
+    if (form.subCategory === 'Split') {
+      data.append('panels', form.panels || 3)
+      data.append('orientation', form.orientation)
     }
-   }
+    data.append('stock', JSON.stringify(form.sizes.map(size => ({
+      size, quantity: Number(form.stockPerSize) || 0, available: true,
+    }))))
+    images.forEach((file, i) => { if (file) data.append(`image${i + 1}`, file) })
+
+    const response = await api('/api/product/add', data, token)
+    setSaving(false)
+    if (response.success) {
+      toast.success(response.message)
+      navigate('/products')
+    }
+  }
 
   return (
-    <form onSubmit={onSubmitHandler} className='flex flex-col w-full items-start gap-3'>
-        <div>
-          <p className='mb-2'>Upload Image</p>
+    <form onSubmit={onSubmit} className='flex flex-col gap-6 max-w-3xl'>
+      <div>
+        <h1 className='text-xl sm:text-2xl text-gray-900'>Add a poster</h1>
+        <p className='text-xs text-gray-500 mt-1'>It goes live on the storefront as soon as you save.</p>
+      </div>
 
-          <div className='flex gap-2'>
-            <label htmlFor="image1">
-              <img className='w-20' src={!image1 ? assets.upload_area : URL.createObjectURL(image1)} alt="" />
-              <input onChange={(e)=>setImage1(e.target.files[0])} type="file" id="image1" hidden/>
-            </label>
-            <label htmlFor="image2">
-              <img className='w-20' src={!image2 ? assets.upload_area : URL.createObjectURL(image2)} alt="" />
-              <input onChange={(e)=>setImage2(e.target.files[0])} type="file" id="image2" hidden/>
-            </label>
-            <label htmlFor="image3">
-              <img className='w-20' src={!image3 ? assets.upload_area : URL.createObjectURL(image3)} alt="" />
-              <input onChange={(e)=>setImage3(e.target.files[0])} type="file" id="image3" hidden/>
-            </label>
-            <label htmlFor="image4">
-              <img className='w-20' src={!image4 ? assets.upload_area : URL.createObjectURL(image4)} alt="" />
-              <input onChange={(e)=>setImage4(e.target.files[0])} type="file" id="image4" hidden/>
-            </label>
-          </div>
-        </div>
-
-        <div className='w-full'>
-          <p className='mb-2'>Product name</p>
-          <input onChange={(e)=>setName(e.target.value)} value={name} className='w-full max-w-[500px] px-3 py-2' type="text" placeholder='Type here' required/>
-        </div>
-
-        <div className='w-full'>
-          <p className='mb-2'>Product description</p>
-          <textarea onChange={(e)=>setDescription(e.target.value)} value={description} className='w-full max-w-[500px] px-3 py-2' type="text" placeholder='Write content here' required/>
-        </div>
-
-        <div className='flex flex-col sm:flex-row gap-2 w-full sm:gap-8'>
-
-            <div>
-              <p className='mb-2'>Product category</p>
-              <select onChange={(e) => setCategory(e.target.value)} className='w-full px-3 py-2'>
-                  <option value="Autosport">Autosport</option>
-                  <option value="Anime">Anime</option>
-                  <option value="Sports">Sports</option>
-                  <option value="TV Series">TV Series</option>
-                  <option value="Music">Music</option>
-                  <option value="Video-Games">Video-Games</option>
-                  <option value="Motivate">Motivate</option>
-              </select>
-            </div>
-
-            <div>
-              <p className='mb-2'>Sub category</p>
-              <select onChange={(e) => setSubCategory(e.target.value)} className='w-full px-3 py-2'>
-                  <option value="Single">Single</option>
-                  <option value="Split">Split</option>
-              </select>
-            </div>
-
-            <div>
-              <p className='mb-2'>Product Price</p>
-              <input onChange={(e) => setPrice(e.target.value)} value={price} className='w-full px-3 py-2 sm:w-[120px]' type="Number" placeholder='25' />
-            </div>
-
-        </div>
-
-        <div>
-          <p className='mb-2'>Poster Sizes</p>
-          <div className='flex gap-3'>
-            {["A6", "A5", "A4", "A3", "A3+"].map((s) => (
-              <div key={s} onClick={()=>setSizes(prev => prev.includes(s) ? prev.filter( item => item !== s) : [...prev,s])}>
-                <p className={`${sizes.includes(s) ? "bg-pink-100" : "bg-slate-200" } px-3 py-1 cursor-pointer`}>{s}</p>
+      <section className='border border-gray-200 rounded-lg bg-white p-4'>
+        <p className='text-xs text-gray-500 mb-3'>Images — the first one is the tile</p>
+        <div className='flex flex-wrap gap-3'>
+          {images.map((file, i) => (
+            <label key={i} className='cursor-pointer'>
+              <input
+                type='file'
+                accept='image/*'
+                hidden
+                onChange={(e) => {
+                  const next = [...images]
+                  next[i] = e.target.files?.[0] || null
+                  setImages(next)
+                }}
+              />
+              <div className='w-24 h-28 border-2 border-dashed border-gray-300 hover:border-brand rounded flex items-center justify-center overflow-hidden bg-gray-50 transition-colors'>
+                {file
+                  ? <img src={URL.createObjectURL(file)} alt='' className='w-full h-full object-cover' />
+                  : <span className='text-[11px] text-gray-400'>{i === 0 ? 'Main' : `Image ${i + 1}`}</span>}
               </div>
+            </label>
+          ))}
+        </div>
+      </section>
+
+      <section className='border border-gray-200 rounded-lg bg-white p-4 grid grid-cols-1 sm:grid-cols-2 gap-4'>
+        <Field label='Name'>
+          <input value={form.name} onChange={(e) => update('name', e.target.value)} required className='w-full text-sm px-3 py-2' placeholder='BMW M2 Drift Poster' />
+        </Field>
+
+        <Field label='Category'>
+          <select value={form.category} onChange={(e) => update('category', e.target.value)} className='w-full text-sm px-3 py-2'>
+            {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+          </select>
+        </Field>
+
+        <Field label='Description' hint='Shown on the product page.'>
+          <textarea value={form.description} onChange={(e) => update('description', e.target.value)} rows={3} className='w-full text-sm px-3 py-2' />
+        </Field>
+
+        <div className='grid grid-cols-2 gap-3'>
+          <Field label='Type'>
+            <select value={form.subCategory} onChange={(e) => update('subCategory', e.target.value)} className='w-full text-sm px-3 py-2'>
+              <option>Single</option>
+              <option>Split</option>
+            </select>
+          </Field>
+          {form.subCategory === 'Split' && (
+            <>
+              <Field label='Panels'>
+                <select value={form.panels} onChange={(e) => update('panels', e.target.value)} className='w-full text-sm px-3 py-2'>
+                  {[3, 4, 6, 8].map(n => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </Field>
+              <Field label='Orientation'>
+                <select value={form.orientation} onChange={(e) => update('orientation', e.target.value)} className='w-full text-sm px-3 py-2'>
+                  <option value='vertical'>Vertical</option>
+                  <option value='horizontal'>Horizontal</option>
+                </select>
+              </Field>
+            </>
+          )}
+        </div>
+
+        <Field label='Price shown on the tile' hint='A4 is the catalogue price; each size has its own on the product page.'>
+          <input type='number' value={form.price} onChange={(e) => update('price', e.target.value)} required className='w-full text-sm px-3 py-2' />
+        </Field>
+
+        <Field label='Struck-through price'>
+          <input type='number' value={form.originalPrice} onChange={(e) => update('originalPrice', e.target.value)} className='w-full text-sm px-3 py-2' />
+        </Field>
+
+        <Field label='Sizes offered'>
+          <div className='flex flex-wrap gap-2'>
+            {SIZES.map(size => (
+              <button
+                type='button'
+                key={size}
+                onClick={() => toggleSize(size)}
+                className={`px-3 py-1.5 text-sm border rounded transition-colors ${
+                  form.sizes.includes(size) ? 'bg-black text-white border-black' : 'border-gray-300 hover:border-black'
+                }`}
+              >
+                {size}
+              </button>
             ))}
           </div>
-        </div>
+        </Field>
 
-        <div className='flex gap-2 mt-2'>
-          <input onChange={() => setBestseller(prev => !prev)} checked={bestseller} type="checkbox" id='bestseller' />
-          <label className='cursor-pointer' htmlFor="bestseller">Add to bestseller</label>
-        </div>
+        <Field label='Opening stock, per size'>
+          <input type='number' min='0' value={form.stockPerSize} onChange={(e) => update('stockPerSize', e.target.value)} className='w-full text-sm px-3 py-2' />
+        </Field>
 
-        <button type="submit" className='w-28 py-3 mt-4 bg-black text-white'>ADD</button>
+        <Field label='Tags' hint='Comma separated — used for curated rows like the superhero wall.'>
+          <input value={form.tags} onChange={(e) => update('tags', e.target.value)} className='w-full text-sm px-3 py-2' placeholder='superhero, marvel' />
+        </Field>
 
+        <label className='flex items-center gap-2 text-sm text-gray-600 self-end'>
+          <input type='checkbox' checked={form.bestseller} onChange={(e) => update('bestseller', e.target.checked)} className='accent-brand' />
+          Feature as a bestseller
+        </label>
+      </section>
+
+      <div>
+        <button disabled={saving} className='bg-black text-white text-sm px-8 py-2.5 rounded hover:bg-brand transition-colors disabled:bg-gray-400'>
+          {saving ? 'Saving…' : 'Add poster'}
+        </button>
+      </div>
     </form>
   )
 }

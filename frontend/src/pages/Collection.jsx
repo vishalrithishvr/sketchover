@@ -7,6 +7,7 @@ import ProductItem from '../components/ProductItem';
 import Pagination from '../components/Pagination';
 import PageBanner from '../components/PageBanner';
 import NewsletterBox from '../components/NewsletterBox';
+import MediaSlot from '../components/MediaSlot';
 import Reveal from '../components/Reveal';
 import { CloseIcon } from '../components/icons/NavIcons';
 
@@ -120,6 +121,8 @@ const Collection = () => {
         title={heading}
         subtitle='Premium matte prints — A6 to A3+'
       />
+
+      <MediaSlot slot='collection-top' columns={2} />
 
       <div className='text-center text-xl sm:text-2xl mt-10 mb-6'>
         <Title text1={heading} />

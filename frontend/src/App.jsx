@@ -9,6 +9,7 @@ import MarqueeBar from './components/MarqueeBar'
 import WhatsappFloat from './components/WhatsappFloat'
 import LogoIntro from './components/LogoIntro'
 import CartDrawer from './components/CartDrawer'
+import MediaSlot from './components/MediaSlot'
 import { PageTransitionProvider, ScrollToTop } from './components/PageTransition'
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -55,6 +56,9 @@ const App = () => {
             <Route path='/verify' element={<Verify />} />
           </Routes>
         </Suspense>
+
+        {/* Anything the studio pins to the footer slot shows on every page. */}
+        <MediaSlot slot='footer' columns={2} />
       </div>
       <Footer />
       <CartDrawer />

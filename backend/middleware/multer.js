@@ -1,11 +1,10 @@
 import multer from "multer";
 
-const storage = multer.diskStorage({
-    filename:function(req,file,callback){
-        callback(null,file.originalname)
-    }
+// Files are held in memory on their way to GridFS, so nothing is written to a
+// disk the host may wipe between deploys. 200 MB covers a long review video.
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 200 * 1024 * 1024 },
 })
-
-const upload = multer({storage})
 
 export default upload

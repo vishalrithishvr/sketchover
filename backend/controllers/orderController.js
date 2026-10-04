@@ -1,234 +1,160 @@
-import orderModel from "../models/orderModel.js";
-import userModel from "../models/userModel.js";
-import Stripe from 'stripe'
-import razorpay from 'razorpay'
+import orderModel, { ORDER_STATUSES } from "../models/orderModel.js"
+import productModel from "../models/productModel.js"
+import couponModel from "../models/couponModel.js"
 
-// global variables
-const currency = 'inr'
-const deliveryCharge = 10
+// SKO-261004-4F2A
+const makeReference = () => {
+    const d = new Date()
+    const stamp = [d.getFullYear() % 100, d.getMonth() + 1, d.getDate()]
+        .map(n => String(n).padStart(2, '0')).join('')
+    return `SKO-${stamp}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
+}
 
-// gateway initialize
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
+// Take stock off the shelf for what was just bought. Custom prints are made to
+// order, so they have no stock to move.
+const drawDownStock = async (items) => {
+    for (const item of items) {
+        if (item.isCustom || !item.sku) continue
+        const product = await productModel.findOne({ sku: item.sku })
+        if (!product) continue
 
-const razorpayInstance = new razorpay({
-    key_id : process.env.RAZORPAY_KEY_ID,
-    key_secret : process.env.RAZORPAY_KEY_SECRET,
-})
+        const entry = product.stock.find(s => s.size === item.size)
+        if (entry) {
+            entry.quantity = Math.max(0, entry.quantity - item.quantity)
+            if (entry.quantity === 0) entry.available = false
+        }
+        product.sold += item.quantity
+        if (product.stock.length && !product.stock.some(s => s.available && s.quantity > 0)) {
+            product.outOfStock = true
+        }
+        await product.save()
+    }
+}
 
-// Placing orders using COD Method
-const placeOrder = async (req,res) => {
-    
+// The storefront books the order here when the shopper confirms it, before the
+// WhatsApp hand-off, so the studio sees it even if the chat is never sent.
+const placeOrder = async (req, res) => {
     try {
-        
-        const { userId, items, amount, address} = req.body;
+        const { items, address, subtotal, comboDiscount, couponCode, couponDiscount,
+                platformFee, amount, isChennai, paymentMethod, reference } = req.body
 
-        const orderData = {
-            userId,
-            items,
-            address,
-            amount,
-            paymentMethod:"COD",
-            payment:false,
-            date: Date.now()
+        if (!Array.isArray(items) || items.length === 0) {
+            return res.json({ success: false, message: 'The cart is empty.' })
+        }
+        if (!address || !address.firstName || !address.phone) {
+            return res.json({ success: false, message: 'A delivery address is required.' })
         }
 
-        const newOrder = new orderModel(orderData)
-        await newOrder.save()
+        const order = new orderModel({
+            reference: reference || makeReference(),
+            userId: req.body.userId || 'guest',
+            items,
+            subtotal: Number(subtotal) || 0,
+            comboDiscount: Number(comboDiscount) || 0,
+            couponCode: (couponCode || '').toUpperCase(),
+            couponDiscount: Number(couponDiscount) || 0,
+            platformFee: Number(platformFee) || 0,
+            amount: Number(amount) || 0,
+            address,
+            customerName: `${address.firstName || ''} ${address.lastName || ''}`.trim(),
+            phone: address.phone,
+            email: address.email,
+            isChennai: !!isChennai,
+            paymentMethod: paymentMethod || 'WhatsApp',
+            status: 'Order Placed',
+            statusHistory: [{ status: 'Order Placed', at: Date.now(), note: 'Placed on the website' }],
+            date: Date.now(),
+        })
 
-        await userModel.findByIdAndUpdate(userId,{cartData:{}})
+        await order.save()
+        await drawDownStock(items)
 
-        res.json({success:true,message:"Order Placed"})
+        if (order.couponCode) {
+            await couponModel.updateOne({ code: order.couponCode }, { $inc: { usedCount: 1 } })
+        }
 
+        res.json({ success: true, message: 'Order placed', reference: order.reference, orderId: order._id })
 
     } catch (error) {
         console.log(error)
-        res.json({success:false,message:error.message})
+        res.json({ success: false, message: error.message })
     }
-
 }
 
-// Placing orders using Stripe Method
-const placeOrderStripe = async (req,res) => {
+const allOrders = async (req, res) => {
     try {
-        
-        const { userId, items, amount, address} = req.body
-        const { origin } = req.headers;
-
-        const orderData = {
-            userId,
-            items,
-            address,
-            amount,
-            paymentMethod:"Stripe",
-            payment:false,
-            date: Date.now()
+        const { status, search, limit } = req.body
+        const query = {}
+        if (status && status !== 'All') query.status = status
+        if (search) {
+            const rx = new RegExp(String(search).trim(), 'i')
+            query.$or = [{ reference: rx }, { customerName: rx }, { phone: rx }, { email: rx }]
         }
 
-        const newOrder = new orderModel(orderData)
-        await newOrder.save()
+        const orders = await orderModel.find(query).sort({ date: -1 }).limit(Number(limit) || 200)
+        res.json({ success: true, orders })
+    } catch (error) {
+        console.log(error)
+        res.json({ success: false, message: error.message })
+    }
+}
 
-        const line_items = items.map((item) => ({
-            price_data: {
-                currency:currency,
-                product_data: {
-                    name:item.name
-                },
-                unit_amount: item.price * 100
+const userOrders = async (req, res) => {
+    try {
+        const orders = await orderModel.find({ userId: req.body.userId }).sort({ date: -1 })
+        res.json({ success: true, orders })
+    } catch (error) {
+        console.log(error)
+        res.json({ success: false, message: error.message })
+    }
+}
+
+// Look an order up by its reference — what a customer quotes on WhatsApp.
+const trackOrder = async (req, res) => {
+    try {
+        const order = await orderModel.findOne({ reference: (req.body.reference || '').trim().toUpperCase() })
+        if (!order) return res.json({ success: false, message: 'No order with that reference.' })
+        res.json({
+            success: true,
+            order: {
+                reference: order.reference,
+                status: order.status,
+                statusHistory: order.statusHistory,
+                date: order.date,
+                amount: order.amount,
+                items: order.items.map(i => ({ name: i.name, size: i.size, quantity: i.quantity })),
             },
-            quantity: item.quantity
-        }))
-
-        line_items.push({
-            price_data: {
-                currency:currency,
-                product_data: {
-                    name:'Delivery Charges'
-                },
-                unit_amount: deliveryCharge * 100
-            },
-            quantity: 1
         })
-
-        const session = await stripe.checkout.sessions.create({
-            success_url: `${origin}/verify?success=true&orderId=${newOrder._id}`,
-            cancel_url:  `${origin}/verify?success=false&orderId=${newOrder._id}`,
-            line_items,
-            mode: 'payment',
-        })
-
-        res.json({success:true,session_url:session.url});
-
     } catch (error) {
         console.log(error)
-        res.json({success:false,message:error.message})
+        res.json({ success: false, message: error.message })
     }
 }
 
-// Verify Stripe 
-const verifyStripe = async (req,res) => {
-
-    const { orderId, success, userId } = req.body
-
+const updateStatus = async (req, res) => {
     try {
-        if (success === "true") {
-            await orderModel.findByIdAndUpdate(orderId, {payment:true});
-            await userModel.findByIdAndUpdate(userId, {cartData: {}})
-            res.json({success: true});
-        } else {
-            await orderModel.findByIdAndDelete(orderId)
-            res.json({success:false})
-        }
-        
-    } catch (error) {
-        console.log(error)
-        res.json({success:false,message:error.message})
-    }
-
-}
-
-// Placing orders using Razorpay Method
-const placeOrderRazorpay = async (req,res) => {
-    try {
-        
-        const { userId, items, amount, address} = req.body
-
-        const orderData = {
-            userId,
-            items,
-            address,
-            amount,
-            paymentMethod:"Razorpay",
-            payment:false,
-            date: Date.now()
+        const { orderId, status, note, payment } = req.body
+        if (status && !ORDER_STATUSES.includes(status)) {
+            return res.json({ success: false, message: 'Unknown status' })
         }
 
-        const newOrder = new orderModel(orderData)
-        await newOrder.save()
+        const order = await orderModel.findById(orderId)
+        if (!order) return res.json({ success: false, message: 'Order not found' })
 
-        const options = {
-            amount: amount * 100,
-            currency: currency.toUpperCase(),
-            receipt : newOrder._id.toString()
+        if (status && status !== order.status) {
+            order.status = status
+            order.statusHistory.push({ status, at: Date.now(), note: note || '' })
+            if (status === 'Paid') order.payment = true
         }
+        if (payment !== undefined) order.payment = payment === true || payment === 'true'
+        if (note !== undefined && !status) order.notes = note
 
-        await razorpayInstance.orders.create(options, (error,order)=>{
-            if (error) {
-                console.log(error)
-                return res.json({success:false, message: error})
-            }
-            res.json({success:true,order})
-        })
-
+        await order.save()
+        res.json({ success: true, message: 'Order updated', order })
     } catch (error) {
         console.log(error)
-        res.json({success:false,message:error.message})
+        res.json({ success: false, message: error.message })
     }
 }
 
-const verifyRazorpay = async (req,res) => {
-    try {
-        
-        const { userId, razorpay_order_id  } = req.body
-
-        const orderInfo = await razorpayInstance.orders.fetch(razorpay_order_id)
-        if (orderInfo.status === 'paid') {
-            await orderModel.findByIdAndUpdate(orderInfo.receipt,{payment:true});
-            await userModel.findByIdAndUpdate(userId,{cartData:{}})
-            res.json({ success: true, message: "Payment Successful" })
-        } else {
-             res.json({ success: false, message: 'Payment Failed' });
-        }
-
-    } catch (error) {
-        console.log(error)
-        res.json({success:false,message:error.message})
-    }
-}
-
-
-// All Orders data for Admin Panel
-const allOrders = async (req,res) => {
-
-    try {
-        
-        const orders = await orderModel.find({})
-        res.json({success:true,orders})
-
-    } catch (error) {
-        console.log(error)
-        res.json({success:false,message:error.message})
-    }
-
-}
-
-// User Order Data For Forntend
-const userOrders = async (req,res) => {
-    try {
-        
-        const { userId } = req.body
-
-        const orders = await orderModel.find({ userId })
-        res.json({success:true,orders})
-
-    } catch (error) {
-        console.log(error)
-        res.json({success:false,message:error.message})
-    }
-}
-
-// update order status from Admin Panel
-const updateStatus = async (req,res) => {
-    try {
-        
-        const { orderId, status } = req.body
-
-        await orderModel.findByIdAndUpdate(orderId, { status })
-        res.json({success:true,message:'Status Updated'})
-
-    } catch (error) {
-        console.log(error)
-        res.json({success:false,message:error.message})
-    }
-}
-
-export {verifyRazorpay, verifyStripe ,placeOrder, placeOrderStripe, placeOrderRazorpay, allOrders, userOrders, updateStatus}
+export { placeOrder, allOrders, userOrders, updateStatus, trackOrder, ORDER_STATUSES }
