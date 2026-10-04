@@ -44,8 +44,12 @@ export default async (request) => {
         redirect: 'manual',
     })
 
+    // Content-Length describes the body, not the hop, so it stays: video
+    // players use it to size the file they are seeking through.
     const out = new Headers(response.headers)
-    for (const key of HOP_BY_HOP) out.delete(key)
+    for (const key of HOP_BY_HOP) {
+        if (key !== 'content-length') out.delete(key)
+    }
 
     return new Response(response.body, { status: response.status, headers: out })
 }
