@@ -4,7 +4,7 @@ import Title from './Title'
 import { QualityIcon, DesignIcon, OfferIcon, DeliveryIcon } from './icons/NavIcons'
 
 const features = [
-  { Icon: QualityIcon,  title: 'Quality' },
+  { Icon: QualityIcon,  title: 'Premium Quality' },
   { Icon: DesignIcon,   title: 'Custom Design' },
   { Icon: OfferIcon,    title: 'Exclusive Offers' },
   { Icon: DeliveryIcon, title: 'Free Delivery' },

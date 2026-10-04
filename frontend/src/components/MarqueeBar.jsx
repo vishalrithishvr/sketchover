@@ -2,9 +2,22 @@ import React from 'react'
 
 export const MARQUEE_TEXT = 'Free Delivery from ₹399'
 
+// The strip runs both offers, one after the other.
+export const MARQUEE_MESSAGES = [
+  MARQUEE_TEXT,
+  'Free Mystery Gift Pack on Orders Above ₹599 — More Merch, More Savings!',
+]
+
+// What the slanted ribbon shouts about further down the page.
+export const RIBBON_MESSAGES = [
+  'Mystery gift on orders above ₹599',
+  'Get 5% OFF with your Student ID',
+  'Sunday = Fandom Fun',
+]
+
 // Top announcement strip.
-const MarqueeBar = ({ text = MARQUEE_TEXT }) => {
-  const items = new Array(8).fill(text)
+const MarqueeBar = ({ messages = MARQUEE_MESSAGES }) => {
+  const items = new Array(4).fill(messages).flat()
 
   return (
     <div className='bg-black text-white overflow-hidden whitespace-nowrap py-2 text-[11px] sm:text-xs tracking-wide'>
@@ -28,8 +41,8 @@ const MarqueeBar = ({ text = MARQUEE_TEXT }) => {
 // a 3deg slant climbs ~100vw * tan(3deg) across the screen — otherwise the
 // wrapper clips the band and its own straight edges show up as the border,
 // which reads as two non-parallel lines.
-export const DiagonalRibbon = ({ text = MARQUEE_TEXT }) => {
-  const items = new Array(16).fill(text)
+export const DiagonalRibbon = ({ messages = RIBBON_MESSAGES }) => {
+  const items = new Array(6).fill(messages).flat()
 
   return (
     <div className='relative my-14 h-[clamp(105px,13vw,180px)] bleed-full overflow-hidden' aria-hidden='true'>

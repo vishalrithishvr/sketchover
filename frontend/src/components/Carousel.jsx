@@ -6,12 +6,16 @@ const Carousel = ({ children, theme = 'light' }) => {
   const trackRef = useRef(null)
   const [page, setPage] = useState(0)
   const [pageCount, setPageCount] = useState(1)
+  // Centring a row that overflows pushes its first card off the left edge where
+  // no amount of scrolling reaches it, so centre only when everything fits.
+  const [overflowing, setOverflowing] = useState(false)
   const isDark = theme === 'dark'
 
   const recalc = () => {
     const el = trackRef.current
     if (!el || el.clientWidth === 0) return
-    setPageCount(Math.max(1, Math.round(el.scrollWidth / el.clientWidth)))
+    setOverflowing(el.scrollWidth > el.clientWidth + 2)
+    setPageCount(Math.max(1, Math.ceil(el.scrollWidth / el.clientWidth)))
     setPage(Math.round(el.scrollLeft / el.clientWidth))
   }
 
@@ -19,12 +23,16 @@ const Carousel = ({ children, theme = 'light' }) => {
     recalc()
     const el = trackRef.current
     if (!el) return
+    // Images arriving change the track width, so measure again when they do.
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(recalc) : null
+    observer?.observe(el)
     const onScroll = () => setPage(Math.round(el.scrollLeft / el.clientWidth))
     el.addEventListener('scroll', onScroll, { passive: true })
     window.addEventListener('resize', recalc)
     return () => {
       el.removeEventListener('scroll', onScroll)
       window.removeEventListener('resize', recalc)
+      observer?.disconnect()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [React.Children.count(children)])
@@ -41,7 +49,7 @@ const Carousel = ({ children, theme = 'light' }) => {
     <div className='relative'>
       <div
         ref={trackRef}
-        className={`flex overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory gap-3 sm:gap-4 ${pageCount === 1 ? 'sm:justify-center' : ''}`}
+        className={`flex overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory gap-3 sm:gap-4 ${overflowing ? '' : 'sm:justify-center'}`}
       >
         {children}
       </div>

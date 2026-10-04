@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { ShopContext } from '../context/ShopContext';
-import { categoryShowcase, CATEGORY_BANNERS } from '../assets/assets';
+import { categoryShowcase, CATEGORY_BANNERS, SPLIT_SET_TYPES } from '../assets/assets';
 import { usePageTransition } from './PageTransition';
 import Logo from './Logo';
 import { SearchIcon, CartIcon, MenuIcon, CloseIcon, HeartIcon, ChevronDownIcon } from './icons/NavIcons';
@@ -130,11 +130,31 @@ const Navbar = () => {
             </Link>
             <Link
               to='/custom-posters'
-              onClick={(e) => open(e, 'Custom Posters', '/custom-posters', CATEGORY_BANNERS.Custom?.accent)}
+              onClick={(e) => open(e, 'Customized', '/custom-posters', CATEGORY_BANNERS.Custom?.accent)}
               className={`py-3.5 px-6 border-b transition-colors ${isOpening('/custom-posters') ? 'bg-brand/10 text-brand animate-tile-pop' : 'active:bg-gray-50'}`}
             >
-              Custom Posters
+              Customized
             </Link>
+            <Link
+              to='/collection?type=split'
+              onClick={(e) => open(e, 'Split Posters', '/collection?type=split')}
+              className={`py-3.5 px-6 border-b transition-colors ${isOpening('/collection?type=split') ? 'bg-brand/10 text-brand animate-tile-pop' : 'active:bg-gray-50'}`}
+            >
+              Split Posters
+            </Link>
+            {SPLIT_SET_TYPES.map((type) => {
+              const to = `/custom-posters?type=${type.id}`
+              return (
+                <Link
+                  key={type.id}
+                  to={to}
+                  onClick={(e) => open(e, type.name, to)}
+                  className={`py-3 pl-10 pr-6 border-b text-sm transition-colors ${isOpening(to) ? 'bg-brand/10 text-brand animate-tile-pop' : 'text-gray-500 active:bg-gray-50'}`}
+                >
+                  {type.name}
+                </Link>
+              )
+            })}
             <NavLink className='py-3.5 px-6 border-b active:bg-gray-50' to='/favorites'>Favorites</NavLink>
             <NavLink className='py-3.5 px-6 border-b active:bg-gray-50' to='/cart'>Cart</NavLink>
             <NavLink className='py-3.5 px-6 border-b active:bg-gray-50' to='/about'>About</NavLink>
@@ -185,16 +205,29 @@ const Navbar = () => {
             <li>
               <NavLink
                 to='/custom-posters'
-                onClick={(e) => open(e, 'Custom Posters', '/custom-posters', CATEGORY_BANNERS.Custom?.accent)}
+                onClick={(e) => open(e, 'Customized', '/custom-posters', CATEGORY_BANNERS.Custom?.accent)}
                 className={linkClass}
               >
-                Custom Posters
+                Customized
               </NavLink>
             </li>
 
-            <Dropdown to='/collection?category=TV Series' label='Vintage Prints'>
-              <Link to={categoryPath('TV Series')} onClick={(e) => openCategory(e, 'TV Series')} className='hover:text-brand'>TV &amp; Movie Classics</Link>
-              <Link to={categoryPath('Autosport')} onClick={(e) => openCategory(e, 'Autosport')} className='hover:text-brand'>Retro Autosport</Link>
+            <Dropdown to='/collection?type=split' label='Split Posters'>
+              {SPLIT_SET_TYPES.map((type) => {
+                const to = `/custom-posters?type=${type.id}`
+                return (
+                  <Link key={type.id} to={to} onClick={(e) => open(e, type.name, to)} className='whitespace-nowrap hover:text-brand'>
+                    {type.name}
+                  </Link>
+                )
+              })}
+              <Link
+                to='/collection?type=split'
+                onClick={(e) => open(e, 'Split Posters', '/collection?type=split')}
+                className='pt-2 mt-1 border-t border-gray-100 text-black hover:text-brand'
+              >
+                Ready-made sets
+              </Link>
             </Dropdown>
           </ul>
         </nav>

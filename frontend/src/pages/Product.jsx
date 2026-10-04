@@ -43,7 +43,7 @@ const Product = () => {
 
   if (!productData) return <div className='opacity-0'></div>
 
-  const { price, originalPrice } = getSizePrice(size || DEFAULT_SIZE, productData.subCategory);
+  const { price, originalPrice } = getSizePrice(size || DEFAULT_SIZE, productData.subCategory, productData.panels);
   const hasDiscount = originalPrice > price;
   const isWishlisted = wishlist.includes(productData._id)
   // Everything of this poster already in the basket, by size.

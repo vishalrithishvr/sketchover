@@ -87,7 +87,7 @@ const CartDrawer = () => {
           <>
             <div className='flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-4'>
               {lines.map((line) => {
-                const { price } = getSizePrice(line.size, line.product.subCategory)
+                const { price } = getSizePrice(line.size, line.product.subCategory, line.product.panels)
                 const justAdded = isLatest(line)
 
                 return (

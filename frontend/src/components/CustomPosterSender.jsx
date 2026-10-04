@@ -1,7 +1,8 @@
 import React, { useContext, useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { ShopContext } from '../context/ShopContext'
-import { CUSTOM_SIZES, CUSTOM_POSTER_TYPES, getSizePrice } from '../assets/assets'
+import { CUSTOM_SIZES, CUSTOM_POSTER_TYPES, findCustomPosterType, getSizePrice } from '../assets/assets'
+import { SplitPreview } from './SplitSetRow'
 import { UploadIcon, CloseIcon, CheckIcon, CartIcon } from './icons/NavIcons'
 
 // Printable area in inches, used to work out the true DPI of the artwork.
@@ -17,8 +18,9 @@ const CustomPosterSender = ({ defaultSize = 'A4', compact = false }) => {
 
   const { addCustomPoster, addToCart, openCartDrawer } = useContext(ShopContext)
   const [adding, setAdding] = useState(false)
+  const [searchParams] = useSearchParams()
 
-  const [type, setType] = useState(CUSTOM_POSTER_TYPES[0])
+  const [type, setType] = useState(() => findCustomPosterType(searchParams.get('type')) || CUSTOM_POSTER_TYPES[0])
   const [picks, setPicks] = useState([])          // { file, url, dimensions }
   const [size, setSize] = useState(defaultSize)
   const [sent, setSent] = useState(false)
@@ -27,6 +29,12 @@ const CustomPosterSender = ({ defaultSize = 'A4', compact = false }) => {
 
   const needed = type.images
   const ready = picks.length === needed
+
+  // Following a "3-Split" link from the homepage lands here on that shape.
+  useEffect(() => {
+    const wanted = findCustomPosterType(searchParams.get('type'))
+    if (wanted && wanted.id !== type.id) chooseType(wanted)
+  }, [searchParams])
 
   // Object URLs are revoked as soon as they are replaced — nothing is kept.
   const revokeAll = (list) => list.forEach(p => URL.revokeObjectURL(p.url))
@@ -103,6 +111,9 @@ const CustomPosterSender = ({ defaultSize = 'A4', compact = false }) => {
         size,
         files: picks.map(p => p.file),
         dimensions: measured[0]?.dimensions || null,
+        panels: type.panels,
+        orientation: type.orientation,
+        subCategory: type.subCategory,
       })
       if (!poster) return
       await addToCart(`custom:${poster.id}`, poster.size)
@@ -116,7 +127,7 @@ const CustomPosterSender = ({ defaultSize = 'A4', compact = false }) => {
     }
   }
 
-  const { price, originalPrice } = getSizePrice(size, 'Single')
+  const { price, originalPrice } = getSizePrice(size, type.subCategory || 'Single', type.panels)
 
   return (
     <div className={compact ? '' : 'my-16'}>
@@ -186,7 +197,16 @@ const CustomPosterSender = ({ defaultSize = 'A4', compact = false }) => {
             <div className='flex flex-wrap gap-3'>
               {picks.map((pick, index) => (
                 <div key={pick.url} className='relative w-24 sm:w-28'>
-                  <img src={pick.url} alt={pick.file.name} className='w-full aspect-[333/461] object-cover bg-gray-100' />
+                  {type.panels ? (
+                    <SplitPreview
+                      image={pick.url}
+                      panels={type.panels}
+                      orientation={type.orientation}
+                      className='w-full aspect-[333/461]'
+                    />
+                  ) : (
+                    <img src={pick.url} alt={pick.file.name} className='w-full aspect-[333/461] object-cover bg-gray-100' />
+                  )}
                   <button
                     onClick={() => removeAt(index)}
                     aria-label={`Remove ${pick.file.name}`}

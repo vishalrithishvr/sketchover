@@ -72,7 +72,7 @@ const PlaceOrder = () => {
             for (const size in cartItems[itemId]) {
                 const quantity = cartItems[itemId][size]
                 if (quantity > 0) {
-                    const { price } = getSizePrice(size, product.subCategory)
+                    const { price } = getSizePrice(size, product.subCategory, product.panels)
                     lines.push({
                         id: product._id,
                         name: formatProductName(product),

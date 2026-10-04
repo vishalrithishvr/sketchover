@@ -61,7 +61,7 @@ const Cart = () => {
           {cartData.map((item, index) => {
             const productData = getProduct(item._id);
             if (!productData) return null;
-            const { price, originalPrice } = getSizePrice(item.size, productData.subCategory);
+            const { price, originalPrice } = getSizePrice(item.size, productData.subCategory, productData.panels);
 
             return (
               <div key={index} className='flex gap-4 sm:gap-6 py-6 border-b border-gray-200'>

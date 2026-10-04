@@ -116,7 +116,7 @@ const ShopContextProvider = (props) => {
     }, [customPosters])
 
     // Save the artwork and hand back the cart id it now lives under.
-    const addCustomPoster = useCallback(async ({ type, size, files, dimensions }) => {
+    const addCustomPoster = useCallback(async ({ type, size, files, dimensions, panels, orientation, subCategory }) => {
         const id = `cp_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`
         let stored = []
         try {
@@ -133,6 +133,10 @@ const ShopContextProvider = (props) => {
             size: CUSTOM_SIZES.includes(size) ? size : CUSTOM_SIZES[0],
             files: stored,
             dimensions: dimensions || null,
+            // A split set is priced per panel, like the ready-made sets.
+            panels: panels || null,
+            orientation: orientation || null,
+            subCategory: subCategory === 'Split' ? 'Split' : 'Single',
             createdAt: Date.now(),
         }
         setCustomPosters(prev => [poster, ...prev])
@@ -172,7 +176,9 @@ const ShopContextProvider = (props) => {
         image: customPreviews[poster.id] || [],
         fileNames: poster.files.map(file => file.name),
         category: 'Custom',
-        subCategory: 'Single',
+        subCategory: poster.subCategory || 'Single',
+        panels: poster.panels || null,
+        orientation: poster.orientation || null,
         sizes: CUSTOM_SIZES,
         isCustom: true,
         date: poster.createdAt,
@@ -206,7 +212,7 @@ const ShopContextProvider = (props) => {
             for (const size in cartItems[itemId]) {
                 const quantity = cartItems[itemId][size]
                 if (quantity > 0) {
-                    const { price } = getSizePrice(size, product.subCategory)
+                    const { price } = getSizePrice(size, product.subCategory, product.panels)
                     lines.push({ product, size, quantity, price })
                 }
             }

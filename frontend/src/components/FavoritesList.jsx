@@ -8,7 +8,7 @@ const FavoriteRow = ({ product }) => {
     const { addToCart, toggleWishlist } = useContext(ShopContext)
     const [size, setSize] = useState('')
     const [choosing, setChoosing] = useState(false)
-    const { price, originalPrice } = getSizePrice(size || product.sizes[0], product.subCategory)
+    const { price, originalPrice } = getSizePrice(size || product.sizes[0], product.subCategory, product.panels)
 
     const onAddToBag = () => {
         if (!size) { setChoosing(true); return }

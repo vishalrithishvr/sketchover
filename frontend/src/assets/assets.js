@@ -124,16 +124,32 @@ export const SIZE_PRICING = {
     'A3+': { price: 119, originalPrice: 179 },
 }
 
-const SPLIT_PANEL_COUNT = 3
+export const SPLIT_PANEL_COUNT = 3
 
-export const getSizePrice = (size, subCategory) => {
+// A split set is priced per panel, so a four-panel set costs four prints.
+export const getSizePrice = (size, subCategory, panels) => {
     const base = SIZE_PRICING[size] || SIZE_PRICING.A4
-    const multiplier = subCategory === 'Split' ? SPLIT_PANEL_COUNT : 1
+    const multiplier = subCategory === 'Split' ? (panels || SPLIT_PANEL_COUNT) : 1
     return {
         price: base.price * multiplier,
         originalPrice: base.originalPrice * multiplier,
     }
 }
+
+// The split sets the studio makes to order from a shopper's own photos. Each
+// one is a run of panels that hangs together as a single picture wall.
+export const SPLIT_SET_TYPES = [
+    { id: 'split-3', panels: 3, orientation: 'vertical',   name: '3-Split Posters Sets', short: '3-Split' },
+    { id: 'split-4', panels: 4, orientation: 'vertical',   name: '4-Split Posters Sets', short: '4-Split' },
+    { id: 'split-6', panels: 6, orientation: 'vertical',   name: '6-Split Posters Sets', short: '6-Split' },
+    { id: 'split-8', panels: 8, orientation: 'vertical',   name: '8-Split Posters Sets', short: '8-Split' },
+    { id: 'split-h', panels: 3, orientation: 'horizontal', name: 'Horizontal Split Sets', short: 'Horizontal' },
+]
+
+export const findSplitSetType = (id) => SPLIT_SET_TYPES.find(type => type.id === id) || null
+
+// Curated row: the Marvel, DC and superhero prints in the catalogue.
+export const SUPERHERO_IDS = ['sk007', 'sk008', 'sk009', 'sk010', 'sk011', 'sk012', 'sk013', 'sk014', 'sk015', 'sk038', 'sk040']
 
 // The four kinds of personalised print the studio makes. `images` is how many
 // photos the shopper has to send for that kind.
@@ -142,7 +158,19 @@ export const CUSTOM_POSTER_TYPES = [
     { id: 'polaroid', name: 'Polaroid',          blurb: 'Polaroid-style frame with a white border and caption.', images: 1 },
     { id: 'strip',    name: 'Strip',             blurb: 'Three of your photos stacked into one photo-booth strip.', images: 3 },
     { id: 'wanted',   name: 'Wanted Poster',     blurb: 'Old-west WANTED treatment, aged paper and all.', images: 1 },
+    // Split sets: one picture, cut across the panels and printed as a set.
+    ...SPLIT_SET_TYPES.map(type => ({
+        id: type.id,
+        name: type.name,
+        blurb: `One picture cut across ${type.panels} ${type.orientation} panels, printed as a set.`,
+        images: 1,
+        panels: type.panels,
+        orientation: type.orientation,
+        subCategory: 'Split',
+    })),
 ]
+
+export const findCustomPosterType = (id) => CUSTOM_POSTER_TYPES.find(type => type.id === id) || null
 
 // Custom posters are offered in two sizes only.
 export const CUSTOM_SIZES = ['A4', 'A3']
@@ -413,6 +441,8 @@ export const products = [
         image: [heroAvengersInfinitySet],
         category: 'TV Series',
         subCategory: 'Split',
+        panels: 3,
+        orientation: 'vertical',
         sizes: posterSizes,
         date: 1735000000015,
         bestseller: false
@@ -532,6 +562,8 @@ export const products = [
         image: [animeOnepieceCrewSet],
         category: 'Anime',
         subCategory: 'Split',
+        panels: 3,
+        orientation: 'vertical',
         sizes: posterSizes,
         date: 1735000000020,
         bestseller: false

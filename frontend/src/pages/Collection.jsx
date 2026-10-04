@@ -23,6 +23,8 @@ const Collection = () => {
   const newOnly = searchParams.get('sort') === 'new';
   const bestsellerOnly = searchParams.get('bestseller') === 'true';
   const splitsOnly = searchParams.get('type') === 'split';
+  const panelsParam = Number(searchParams.get('panels')) || null;
+  const orientationParam = searchParams.get('orientation');
 
   // The sort lives in the URL as well as in the dropdown. Arriving here from
   // "New arrivals" while already on a collection page does not remount the
@@ -36,8 +38,9 @@ const Collection = () => {
     ? category
     : newOnly ? 'New Arrivals'
     : bestsellerOnly ? 'Best Selling'
-    : splitsOnly ? 'Split Sets'
-    : 'Shop All Products';
+    : splitsOnly
+      ? (panelsParam ? `${panelsParam}-Split Posters Sets` : 'Split Posters')
+      : 'Shop All Products';
 
   // Filtering and sorting are derived, not stored: one pass, one render.
   const filterProducts = useMemo(()=>{
@@ -59,6 +62,14 @@ const Collection = () => {
 
     if (splitsOnly) {
       productsCopy = productsCopy.filter(item => item.subCategory === 'Split');
+    }
+
+    if (panelsParam) {
+      productsCopy = productsCopy.filter(item => (item.panels || 3) === panelsParam);
+    }
+
+    if (orientationParam) {
+      productsCopy = productsCopy.filter(item => (item.orientation || 'vertical') === orientationParam);
     }
 
     if (sizeFilter) {
@@ -84,12 +95,12 @@ const Collection = () => {
 
     return productsCopy
 
-  },[category, bestsellerOnly, splitsOnly, sizeFilter, sortType, search, showSearch, products])
+  },[category, bestsellerOnly, splitsOnly, panelsParam, orientationParam, sizeFilter, sortType, search, showSearch, products])
 
   // Any change of view starts back at page one.
   useEffect(()=>{
     setPage(1)
-  },[category, bestsellerOnly, splitsOnly, sizeFilter, sortType, search, showSearch])
+  },[category, bestsellerOnly, splitsOnly, panelsParam, orientationParam, sizeFilter, sortType, search, showSearch])
 
   const pageCount = Math.max(1, Math.ceil(filterProducts.length / PER_PAGE))
   const visible = filterProducts.slice((page - 1) * PER_PAGE, page * PER_PAGE)
