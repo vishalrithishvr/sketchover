@@ -1,7 +1,10 @@
 import axios from 'axios'
 import { toast } from 'react-toastify'
 
-export const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000'
+// On Netlify the API lives on the panel's own domain, under /api. Only local
+// development points elsewhere, through VITE_BACKEND_URL in admin/.env.
+export const backendUrl = import.meta.env.VITE_BACKEND_URL
+    || (typeof window !== 'undefined' ? window.location.origin : '')
 export const currency = '₹'
 
 // Every admin call carries the token in the same header, and reports a failure

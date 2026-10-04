@@ -1,7 +1,5 @@
-import orderModel from "../models/orderModel.js"
-import productModel from "../models/productModel.js"
-import settingModel from "../models/settingModel.js"
-import couponModel from "../models/couponModel.js"
+import { db } from "../lib/db.js"
+import { totalStock } from "./productController.js"
 
 const DAY = 24 * 60 * 60 * 1000
 
@@ -14,8 +12,8 @@ const sum = (rows, field) => rows.reduce((total, row) => total + (row[field] || 
 const dashboard = async (req, res) => {
     try {
         const now = Date.now()
-        const orders = await orderModel.find({}).sort({ date: -1 })
-        const products = await productModel.find({})
+        const orders = (await db.orders.all()).sort((a, b) => b.date - a.date)
+        const products = await db.products.all()
 
         const since = (days) => orders.filter(o => o.date >= now - days * DAY)
         const paid = (rows) => rows.filter(o => PAID_STATUSES.includes(o.status) || o.payment)
@@ -40,17 +38,13 @@ const dashboard = async (req, res) => {
             const start = new Date(now - i * DAY).setHours(0, 0, 0, 0)
             const end = start + DAY
             const dayOrders = orders.filter(o => o.date >= start && o.date < end)
-            daily.push({
-                date: start,
-                orders: dayOrders.length,
-                revenue: sum(paid(dayOrders), 'amount'),
-            })
+            daily.push({ date: start, orders: dayOrders.length, revenue: sum(paid(dayOrders), 'amount') })
         }
 
         // What is selling, counted off the orders themselves.
         const soldBySku = new Map()
         for (const order of orders) {
-            for (const item of order.items) {
+            for (const item of order.items || []) {
                 const key = item.sku || item.name
                 const entry = soldBySku.get(key) || { key, name: item.name, quantity: 0, revenue: 0 }
                 entry.quantity += item.quantity
@@ -62,12 +56,12 @@ const dashboard = async (req, res) => {
 
         const lowStock = products
             .map(p => ({
-                id: p._id.toString(),
+                id: p.id,
                 sku: p.sku,
                 name: p.name,
-                outOfStock: p.outOfStock,
-                total: p.stock.reduce((t, s) => t + (s.available ? s.quantity : 0), 0),
-                sizes: p.stock.map(s => ({ size: s.size, quantity: s.quantity, available: s.available })),
+                outOfStock: !!p.outOfStock,
+                total: totalStock(p),
+                sizes: p.stock || [],
             }))
             .filter(p => p.outOfStock || p.total <= 5)
             .sort((a, b) => a.total - b.total)
@@ -82,17 +76,17 @@ const dashboard = async (req, res) => {
             lowStock,
             catalogue: {
                 products: products.length,
-                active: products.filter(p => p.active).length,
+                active: products.filter(p => p.active !== false).length,
                 outOfStock: products.filter(p => p.outOfStock).length,
             },
             recentOrders: orders.slice(0, 8).map(o => ({
-                id: o._id.toString(),
+                id: o.id,
                 reference: o.reference,
                 customerName: o.customerName,
                 amount: o.amount,
                 status: o.status,
                 date: o.date,
-                items: o.items.length,
+                items: (o.items || []).length,
             })),
         })
 
@@ -105,7 +99,7 @@ const dashboard = async (req, res) => {
 // --- Site settings ---------------------------------------------------------
 
 const defaults = {
-    key: 'site',
+    id: 'site',
     marqueeMessages: [
         'Free Delivery from ₹399',
         'Free Mystery Gift Pack on Orders Above ₹599 — More Merch, More Savings!',
@@ -115,18 +109,23 @@ const defaults = {
         'Get 5% OFF with your Student ID',
         'Sunday = Fandom Fun',
     ],
+    announcement: '',
+    whatsappNumber: '918870333236',
+    freeDeliveryFrom: 399,
+    platformFee: 4,
+    deliveryDaysChennai: '2-3',
+    deliveryDaysIndia: '4-7',
 }
 
 const loadSettings = async () => {
-    let settings = await settingModel.findOne({ key: 'site' })
-    if (!settings) settings = await settingModel.create(defaults)
-    return settings
+    const existing = await db.settings.byId('site')
+    if (existing) return existing
+    return db.settings.put(defaults)
 }
 
 const getSettings = async (req, res) => {
     try {
-        const settings = await loadSettings()
-        res.json({ success: true, settings })
+        res.json({ success: true, settings: await loadSettings() })
     } catch (error) {
         console.log(error)
         res.json({ success: false, message: error.message })
@@ -135,13 +134,14 @@ const getSettings = async (req, res) => {
 
 const updateSettings = async (req, res) => {
     try {
-        const settings = await loadSettings()
+        const settings = { ...(await loadSettings()) }
         const fields = ['marqueeMessages', 'ribbonMessages', 'announcement', 'whatsappNumber',
                         'freeDeliveryFrom', 'platformFee', 'deliveryDaysChennai', 'deliveryDaysIndia']
+
         for (const field of fields) {
             if (req.body[field] === undefined) continue
             const value = req.body[field]
-            if (Array.isArray(settings[field])) {
+            if (Array.isArray(defaults[field])) {
                 settings[field] = Array.isArray(value)
                     ? value.filter(Boolean)
                     : String(value).split('\n').map(v => v.trim()).filter(Boolean)
@@ -150,8 +150,9 @@ const updateSettings = async (req, res) => {
             }
         }
         settings.updatedAt = Date.now()
-        await settings.save()
-        res.json({ success: true, message: 'Settings saved', settings })
+
+        const saved = await db.settings.put(settings)
+        res.json({ success: true, message: 'Settings saved', settings: saved })
     } catch (error) {
         console.log(error)
         res.json({ success: false, message: error.message })
@@ -160,10 +161,12 @@ const updateSettings = async (req, res) => {
 
 // --- Coupons ---------------------------------------------------------------
 
+const withMongoId = (coupon) => ({ ...coupon, _id: coupon.id })
+
 const listCoupons = async (req, res) => {
     try {
-        const coupons = await couponModel.find({}).sort({ createdAt: -1 })
-        res.json({ success: true, coupons })
+        const coupons = (await db.coupons.all()).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+        res.json({ success: true, coupons: coupons.map(withMongoId) })
     } catch (error) {
         console.log(error)
         res.json({ success: false, message: error.message })
@@ -173,37 +176,50 @@ const listCoupons = async (req, res) => {
 const saveCoupon = async (req, res) => {
     try {
         const { id, code, percent, active, minOrder, expiresAt, usageLimit, note } = req.body
-        const payload = {
-            code: (code || '').trim().toUpperCase(),
+        const cleanCode = (code || '').trim().toUpperCase()
+        if (!cleanCode) return res.json({ success: false, message: 'A code is required.' })
+        if (!Number(percent)) return res.json({ success: false, message: 'Set a discount percentage.' })
+
+        const clash = await db.coupons.findOne(c => c.code === cleanCode && c.id !== String(id || ''))
+        if (clash) return res.json({ success: false, message: 'That code already exists.' })
+
+        const existing = id ? await db.coupons.byId(id) : null
+        const coupon = await db.coupons.put({
+            ...(existing || { usedCount: 0, createdAt: Date.now() }),
+            ...(existing ? { id: existing.id } : {}),
+            code: cleanCode,
             percent: Number(percent),
             active: active === undefined ? true : (active === true || active === 'true'),
             minOrder: Number(minOrder) || 0,
             expiresAt: expiresAt ? new Date(expiresAt).getTime() : null,
             usageLimit: Number(usageLimit) || 0,
             note: note || '',
-        }
-        if (!payload.code) return res.json({ success: false, message: 'A code is required.' })
-        if (!payload.percent) return res.json({ success: false, message: 'Set a discount percentage.' })
+        })
 
-        const coupon = id
-            ? await couponModel.findByIdAndUpdate(id, payload, { new: true })
-            : await couponModel.create(payload)
-
-        res.json({ success: true, message: 'Coupon saved', coupon })
+        res.json({ success: true, message: 'Coupon saved', coupon: withMongoId(coupon) })
     } catch (error) {
         console.log(error)
-        res.json({ success: false, message: error.code === 11000 ? 'That code already exists.' : error.message })
+        res.json({ success: false, message: error.message })
     }
 }
 
 const removeCoupon = async (req, res) => {
     try {
-        await couponModel.findByIdAndDelete(req.body.id)
+        await db.coupons.remove(req.body.id)
         res.json({ success: true, message: 'Coupon removed' })
     } catch (error) {
         console.log(error)
         res.json({ success: false, message: error.message })
     }
+}
+
+// Why a code cannot be used right now, or null when it can.
+const whyNotUsable = (coupon, orderValue) => {
+    if (!coupon.active) return 'This code is no longer active.'
+    if (coupon.expiresAt && Date.now() > coupon.expiresAt) return 'This code has expired.'
+    if (coupon.usageLimit && (coupon.usedCount || 0) >= coupon.usageLimit) return 'This code has been fully claimed.'
+    if (coupon.minOrder && orderValue < coupon.minOrder) return `Spend ₹${coupon.minOrder} to use this code.`
+    return null
 }
 
 // What the storefront calls when a shopper types a code.
@@ -213,10 +229,10 @@ const validateCoupon = async (req, res) => {
         const orderValue = Number(req.body.orderValue) || 0
         if (!code) return res.json({ success: false, message: 'Enter a code.' })
 
-        const coupon = await couponModel.findOne({ code })
+        const coupon = await db.coupons.findOne(c => c.code === code)
         if (!coupon) return res.json({ success: false, message: "That code isn't valid." })
 
-        const problem = coupon.whyNotUsable(orderValue)
+        const problem = whyNotUsable(coupon, orderValue)
         if (problem) return res.json({ success: false, message: problem })
 
         res.json({ success: true, code: coupon.code, percent: coupon.percent })

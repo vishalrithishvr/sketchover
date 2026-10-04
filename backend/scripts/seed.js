@@ -1,28 +1,25 @@
-// Fill a fresh database from the storefront's own catalogue file, so the shop
-// looks the same the moment the API comes up. Poster images are uploaded into
-// GridFS, which makes the database the single thing a deploy depends on.
+// Fill the shop from the storefront's own catalogue file, against any running
+// API — the one on your machine or the live one on Netlify.
 //
-//   npm run seed            # add anything missing
-//   npm run seed -- --force # wipe products/media and start over
+//   API=https://sketchover-admin.netlify.app node scripts/seed.js
+//   API=http://localhost:4000 node scripts/seed.js
+//
+// Signs in with ADMIN_EMAIL / ADMIN_PASSWORD from backend/.env. Posters that
+// are already there are left alone; pass --replace to overwrite them.
 import 'dotenv/config'
-import mongoose from 'mongoose'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import os from 'node:os'
 import { pathToFileURL } from 'node:url'
-import connectDB from '../config/mongodb.js'
-import { putFile, mediaUrl } from '../config/gridfs.js'
-import productModel from '../models/productModel.js'
-import settingModel from '../models/settingModel.js'
-import couponModel from '../models/couponModel.js'
 
+const API = (process.env.API || 'http://localhost:4000').replace(/\/+$/, '')
 const ASSETS_DIR = path.resolve('../frontend/src/assets')
-const ASSETS_FILE = path.join(ASSETS_DIR, 'assets.js')
+const replace = process.argv.includes('--replace')
 
-// The catalogue file imports images; Node cannot. Swap those imports for the
-// paths themselves and the module becomes plain data.
+// The catalogue file imports images, which Node cannot. Swap each import for
+// its path and the module becomes plain data.
 const loadCatalogue = async () => {
-    const source = await fs.readFile(ASSETS_FILE, 'utf8')
+    const source = await fs.readFile(path.join(ASSETS_DIR, 'assets.js'), 'utf8')
     const asData = source.replace(
         /import\s+(\w+)\s+from\s+'(\.\/[^']+\.(?:jpg|jpeg|png|webp|svg))'/g,
         (_, name, file) => `const ${name} = ${JSON.stringify(file)}`
@@ -36,109 +33,87 @@ const loadCatalogue = async () => {
     }
 }
 
-const uploadedCache = new Map()
-
-const uploadAsset = async (relativePath) => {
-    if (uploadedCache.has(relativePath)) return uploadedCache.get(relativePath)
-
-    const filePath = path.join(ASSETS_DIR, relativePath.replace(/^\.\//, ''))
-    const buffer = await fs.readFile(filePath)
-    const ext = path.extname(filePath).toLowerCase()
-    const mime = ext === '.png' ? 'image/png' : ext === '.webp' ? 'image/webp' : 'image/jpeg'
-
-    const id = await putFile({
-        originalname: path.basename(filePath),
-        mimetype: mime,
-        buffer,
-        size: buffer.length,
+const post = async (route, body, token) => {
+    const res = await fetch(`${API}${route}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { token } : {}) },
+        body: JSON.stringify(body),
     })
-    const url = mediaUrl(id)
-    uploadedCache.set(relativePath, url)
-    return url
+    const text = await res.text()
+    try {
+        return JSON.parse(text)
+    } catch {
+        return { success: false, message: `${res.status}: ${text.slice(0, 120)}` }
+    }
 }
 
 const run = async () => {
-    const force = process.argv.includes('--force')
-    await connectDB()
+    console.log(`[seed] api: ${API}`)
 
-    const catalogue = await loadCatalogue()
-    const { products, SIZES, CUSTOM_SIZES } = catalogue
-    console.log(`[seed] catalogue has ${products.length} products`)
+    const login = await post('/api/user/admin', { email: process.env.ADMIN_EMAIL, password: process.env.ADMIN_PASSWORD })
+    if (!login.success) throw new Error(`could not sign in: ${login.message}`)
+    const token = login.token
 
-    if (force) {
-        await productModel.deleteMany({})
-        console.log('[seed] cleared existing products')
-    }
+    const { products, SIZES, CUSTOM_SIZES } = await loadCatalogue()
+    console.log(`[seed] catalogue has ${products.length} posters`)
 
     let added = 0
     let skipped = 0
+    let failed = 0
 
     for (const item of products) {
-        const existing = await productModel.findOne({ sku: item._id })
-        if (existing) { skipped += 1; continue }
-
         const images = []
         for (const image of item.image) {
-            images.push(await uploadAsset(image))
+            const file = path.join(ASSETS_DIR, image.replace(/^\.\//, ''))
+            const buffer = await fs.readFile(file)
+            const ext = path.extname(file).toLowerCase()
+            images.push({
+                name: path.basename(file),
+                type: ext === '.png' ? 'image/png' : ext === '.webp' ? 'image/webp' : 'image/jpeg',
+                size: buffer.length,
+                data: buffer.toString('base64'),
+            })
         }
 
         const sizes = item.sizes || (item.isCustom ? CUSTOM_SIZES : SIZES)
-        await productModel.create({
-            sku: item._id,
-            name: item.name,
-            description: item.description || '',
-            price: item.price,
-            originalPrice: item.originalPrice,
-            image: images,
-            category: item.category,
-            subCategory: item.subCategory || 'Single',
-            sizes,
-            panels: item.panels || null,
-            orientation: item.orientation || null,
-            bestseller: !!item.bestseller,
-            isCustom: !!item.isCustom,
-            // Made to order, so a custom print never runs out.
-            stock: item.isCustom ? [] : sizes.map(size => ({ size, quantity: 25, available: true })),
-            date: item.date || Date.now(),
-        })
-        added += 1
+        const result = await post('/api/admin/seed', {
+            replace,
+            images,
+            product: {
+                sku: item._id,
+                name: item.name,
+                description: item.description || '',
+                price: item.price,
+                originalPrice: item.originalPrice,
+                category: item.category,
+                subCategory: item.subCategory || 'Single',
+                sizes,
+                panels: item.panels || null,
+                orientation: item.orientation || null,
+                bestseller: !!item.bestseller,
+                isCustom: !!item.isCustom,
+                tags: [],
+                // Made to order, so a custom print never runs out.
+                stock: item.isCustom ? [] : sizes.map(size => ({ size, quantity: 25, available: true })),
+                outOfStock: false,
+                active: true,
+                sold: 0,
+                date: item.date || Date.now(),
+            },
+        }, token)
+
+        if (!result.success) { failed += 1; console.log(`[seed] ${item._id} failed: ${result.message}`) }
+        else if (result.skipped) skipped += 1
+        else added += 1
     }
 
-    console.log(`[seed] products: ${added} added, ${skipped} already there`)
-
-    // Settings the admin can edit afterwards.
-    const settings = await settingModel.findOne({ key: 'site' })
-    if (!settings) {
-        await settingModel.create({
-            key: 'site',
-            marqueeMessages: [
-                'Free Delivery from ₹399',
-                'Free Mystery Gift Pack on Orders Above ₹599 — More Merch, More Savings!',
-            ],
-            ribbonMessages: [
-                'Mystery gift on orders above ₹599',
-                'Get 5% OFF with your Student ID',
-                'Sunday = Fandom Fun',
-            ],
-            minOrderBySize: catalogue.MIN_ORDER_BY_SIZE || {},
-            platformFee: catalogue.PLATFORM_FEE || 4,
-        })
-        console.log('[seed] settings created')
-    }
-
-    // The codes the storefront used to carry in its source.
-    for (const [code, percent] of Object.entries({ SKO10: 10, SKO5: 5, WELCOME5: 5, STUDENT5: 5 })) {
-        const existing = await couponModel.findOne({ code })
-        if (!existing) await couponModel.create({ code, percent, active: true })
-    }
-    console.log('[seed] coupons ready')
-
-    await mongoose.disconnect()
-    console.log('[seed] done')
+    const basics = await post('/api/admin/seed-basics', {}, token)
+    console.log(`[seed] posters: ${added} added, ${skipped} already there, ${failed} failed`)
+    console.log(`[seed] coupons created: ${(basics.coupons || []).join(', ') || 'none needed'}`)
+    if (failed) process.exitCode = 1
 }
 
-run().catch(async (error) => {
+run().catch((error) => {
     console.error('[seed] failed:', error.message)
-    await mongoose.disconnect().catch(() => {})
     process.exit(1)
 })

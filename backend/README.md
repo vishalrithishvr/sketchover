@@ -1,7 +1,14 @@
 # Sketchover API
 
-Express + MongoDB. Serves the storefront, backs the admin panel, and stores the
-pictures and videos itself.
+Express, served two ways:
+
+- **Live** — as a Netlify Function on the `sketchover-admin` site, under `/api`.
+  Data lives in **Netlify Blobs**, which the site has for free: no database
+  account, no connection string, nothing on a laptop that has to stay switched
+  on. The admin panel is the same site, so it talks to the API on its own
+  domain.
+- **On a machine** — `npm start` runs the same app on port 4000 and keeps its
+  data in `backend/.data/` as JSON files.
 
 ## What lives where
 
@@ -11,50 +18,48 @@ pictures and videos itself.
 | `/api/product/add` · `/update` · `/stock` · `/remove` | admin catalogue and stock control |
 | `/api/order/place` | the storefront books an order when a shopper confirms |
 | `/api/order/list` · `/status` · `/track` | admin order desk, and customer tracking by reference |
-| `/api/media/public` · `/file/:id` | videos and images for the storefront, streamed with range support |
+| `/api/media/public` · `/file/:id` | videos and images for the storefront, with range support |
 | `/api/media/upload` · `/update` · `/remove` | the admin media library |
 | `/api/admin/dashboard` | revenue, order counts, best sellers, low stock |
 | `/api/admin/settings` | marquee and ribbon wording, WhatsApp number, delivery promise |
 | `/api/admin/coupon/*` | discount codes, and the check the cart runs |
-| `/health` | says whether the database is actually connected |
+| `/health` | says which storage it is on and how many posters it holds |
 
-Admin routes expect the admin token in a `token` header. `POST /api/user/admin`
-with the email and password from `.env` returns one.
+Admin routes expect the token from `POST /api/user/admin` in a `token` header.
+The token carries a role claim, never the password, and expires after 7 days.
 
-## Running it
+## Settings
+
+The admin login and the signing secret come from environment variables:
+
+| Variable | Live (Netlify site settings) | On a machine (`backend/.env`) |
+| --- | --- | --- |
+| `ADMIN_EMAIL` | the admin username | same |
+| `ADMIN_PASSWORD` | stored as a secret | same |
+| `JWT_SECRET` | stored as a secret | any long random string |
+
+To change the admin password: Netlify → sketchover-admin → Site configuration →
+Environment variables → `ADMIN_PASSWORD`, then trigger a deploy.
+
+## Filling the shop
+
+`scripts/seed.js` reads the storefront's own catalogue file and loads every
+poster, pictures included, into whichever API you point it at:
 
 ```bash
 cd backend
-cp .env.example .env        # then fill in MONGODB_URI and the admin login
-npm install
-npm run seed                # imports the storefront catalogue into MongoDB
-npm run server              # http://localhost:4000
+API=https://sketchover-admin.netlify.app npm run seed   # the live shop
+API=http://localhost:4000 npm run seed                  # a local one
 ```
 
-`npm run seed` reads `frontend/src/assets/assets.js`, uploads every poster image
-into the database and creates the products with stock. Run it once on a fresh
-database. `npm run seed -- --force` wipes the products and starts over.
+Posters already there are left alone; add `-- --replace` to overwrite.
 
-### Without a MongoDB to hand
+## Limits worth knowing
 
-`npm run dev:db` starts a throwaway MongoDB on port 27018 and prints a URI to
-paste into `.env`. It is for working on the machine only — never for real orders.
-
-## Media
-
-Uploads go into MongoDB's own GridFS rather than a third-party bucket, so one
-connection string is the only thing a deploy depends on, and videos survive
-redeploys on hosts with no persistent disk. Files stream with `Accept-Ranges`,
-so a long review video can be scrubbed.
-
-Limit is 200 MB per file. Anything much larger belongs on YouTube — paste the
-link into the media library instead of uploading.
-
-## Deploying
-
-Any Node host works (Render, Railway, Fly, a VPS). Set the same environment
-variables there, point `VITE_BACKEND_URL` in `frontend/.env` and `admin/.env` at
-the deployed URL, and redeploy both front ends.
-
-`vercel.json` is left over from the template and is only relevant if you deploy
-to Vercel.
+- **Uploads are capped at about 6 MB** per request — Netlify's limit for a
+  function. Poster images are far below that. For a long review video, upload
+  it to YouTube and paste the link into the media library instead; it plays in
+  place on the site.
+- Each collection is one JSON document. That is plenty for a studio's
+  catalogue and thousands of orders; if the shop outgrows it, the storage layer
+  in `lib/db.js` is the one file to swap for a database.

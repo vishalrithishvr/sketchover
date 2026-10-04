@@ -1,5 +1,4 @@
-import productModel from "../models/productModel.js"
-import { putFile, deleteFile, mediaUrl } from "../config/gridfs.js"
+import { db, putBinary, deleteBinary, newId } from "../lib/db.js"
 
 const parseList = (value, fallback = []) => {
     if (value === undefined || value === null || value === '') return fallback
@@ -14,22 +13,32 @@ const parseList = (value, fallback = []) => {
 
 const asBool = (value) => value === true || value === 'true' || value === 'on' || value === 1 || value === '1'
 
-// Uploaded images go to GridFS; anything already a URL is kept as-is.
-const collectImages = async (req) => {
-    const uploaded = []
-    for (const key of ['image1', 'image2', 'image3', 'image4']) {
-        const file = req.files?.[key]?.[0]
-        if (file) uploaded.push(mediaUrl(await putFile(file)))
-    }
-    return uploaded
-}
+export const fileUrl = (id) => (id ? `/api/media/file/${id}` : '')
 
-// The next free sku, so the admin never has to invent one.
-const nextSku = async () => {
-    const latest = await productModel.find({ sku: /^sk\d+$/ }).sort({ sku: -1 }).limit(1)
-    const highest = latest[0] ? parseInt(latest[0].sku.slice(2), 10) : 0
-    return `sk${String(Math.max(highest, 0) + 1).padStart(3, '0')}`
-}
+// What the storefront reads, in the shape it already expects.
+export const toStorefront = (product) => ({
+    _id: product.sku,
+    id: product.id,
+    name: product.name,
+    description: product.description,
+    price: product.price,
+    originalPrice: product.originalPrice,
+    image: product.image || [],
+    category: product.category,
+    subCategory: product.subCategory,
+    panels: product.panels || null,
+    orientation: product.orientation || null,
+    sizes: product.sizes || [],
+    bestseller: !!product.bestseller,
+    isCustom: !!product.isCustom,
+    tags: product.tags || [],
+    outOfStock: !!product.outOfStock,
+    // Sizes with nothing left are hidden from the picker.
+    soldOutSizes: (product.stock || []).filter(s => !s.available || s.quantity <= 0).map(s => s.size),
+    date: product.date,
+})
+
+const totalStock = (product) => (product.stock || []).reduce((t, s) => t + (s.available ? s.quantity : 0), 0)
 
 const buildStock = (sizes, stockInput, fallbackQty = 25) => {
     const given = parseList(stockInput, [])
@@ -41,6 +50,29 @@ const buildStock = (sizes, stockInput, fallbackQty = 25) => {
             available: match ? match.available !== false : true,
         }
     })
+}
+
+// Uploaded images are stored and referenced by url.
+const collectImages = async (req) => {
+    const urls = []
+    for (const key of ['image1', 'image2', 'image3', 'image4']) {
+        const file = req.files?.[key]?.[0]
+        if (!file) continue
+        const id = newId()
+        await putBinary(id, file.buffer, { contentType: file.mimetype, name: file.originalname, size: file.size })
+        urls.push(fileUrl(id))
+    }
+    return urls
+}
+
+// The next free sku, so the admin never has to invent one.
+const nextSku = async () => {
+    const products = await db.products.all()
+    const highest = products
+        .map(p => parseInt(String(p.sku).replace(/\D/g, ''), 10))
+        .filter(n => !Number.isNaN(n))
+        .reduce((max, n) => Math.max(max, n), 0)
+    return `sk${String(highest + 1).padStart(3, '0')}`
 }
 
 const addProduct = async (req, res) => {
@@ -56,8 +88,13 @@ const addProduct = async (req, res) => {
             return res.json({ success: false, message: 'Add at least one image.' })
         }
 
-        const product = new productModel({
-            sku: (sku || '').trim() || await nextSku(),
+        const wantedSku = (sku || '').trim() || await nextSku()
+        if (await db.products.findOne(p => p.sku === wantedSku)) {
+            return res.json({ success: false, message: 'That SKU already exists.' })
+        }
+
+        const product = await db.products.put({
+            sku: wantedSku,
             name,
             description: description || '',
             price: Number(price),
@@ -69,48 +106,50 @@ const addProduct = async (req, res) => {
             panels: panels ? Number(panels) : null,
             orientation: orientation || null,
             bestseller: asBool(bestseller),
+            isCustom: false,
             tags: parseList(tags, []),
             stock: buildStock(sizeList, stock),
+            outOfStock: false,
+            active: true,
+            sold: 0,
             date: Date.now(),
         })
 
-        await product.save()
-        res.json({ success: true, message: `${product.name} added`, product: product.toStorefront() })
+        res.json({ success: true, message: `${product.name} added`, product: toStorefront(product) })
 
     } catch (error) {
         console.log(error)
-        res.json({ success: false, message: error.code === 11000 ? 'That SKU already exists.' : error.message })
+        res.json({ success: false, message: error.message })
     }
 }
 
 const updateProduct = async (req, res) => {
     try {
-        const { id } = req.body
-        const product = await productModel.findById(id)
-        if (!product) return res.json({ success: false, message: 'Product not found' })
+        const existing = await db.products.byId(req.body.id)
+        if (!existing) return res.json({ success: false, message: 'Product not found' })
 
-        const fields = ['name', 'description', 'category', 'subCategory', 'orientation']
-        fields.forEach(field => {
-            if (req.body[field] !== undefined) product[field] = req.body[field]
-        })
-        if (req.body.price !== undefined) product.price = Number(req.body.price)
-        if (req.body.originalPrice !== undefined) product.originalPrice = Number(req.body.originalPrice) || undefined
-        if (req.body.panels !== undefined) product.panels = req.body.panels ? Number(req.body.panels) : null
-        if (req.body.bestseller !== undefined) product.bestseller = asBool(req.body.bestseller)
-        if (req.body.active !== undefined) product.active = asBool(req.body.active)
-        if (req.body.tags !== undefined) product.tags = parseList(req.body.tags, [])
+        const changes = { ...existing }
+        for (const field of ['name', 'description', 'category', 'subCategory', 'orientation']) {
+            if (req.body[field] !== undefined) changes[field] = req.body[field]
+        }
+        if (req.body.price !== undefined) changes.price = Number(req.body.price)
+        if (req.body.originalPrice !== undefined) changes.originalPrice = Number(req.body.originalPrice) || undefined
+        if (req.body.panels !== undefined) changes.panels = req.body.panels ? Number(req.body.panels) : null
+        if (req.body.bestseller !== undefined) changes.bestseller = asBool(req.body.bestseller)
+        if (req.body.active !== undefined) changes.active = asBool(req.body.active)
+        if (req.body.tags !== undefined) changes.tags = parseList(req.body.tags, [])
 
         if (req.body.sizes !== undefined) {
-            product.sizes = parseList(req.body.sizes, product.sizes)
-            product.stock = buildStock(product.sizes, JSON.stringify(product.stock))
+            changes.sizes = parseList(req.body.sizes, existing.sizes)
+            changes.stock = buildStock(changes.sizes, JSON.stringify(existing.stock || []))
         }
 
         const newImages = await collectImages(req)
-        if (newImages.length) product.image = [...product.image, ...newImages]
-        if (req.body.image !== undefined) product.image = parseList(req.body.image, product.image)
+        if (newImages.length) changes.image = [...(existing.image || []), ...newImages]
+        if (req.body.image !== undefined) changes.image = parseList(req.body.image, existing.image)
 
-        await product.save()
-        res.json({ success: true, message: 'Product updated', product: product.toStorefront() })
+        const product = await db.products.put(changes)
+        res.json({ success: true, message: 'Product updated', product: toStorefront(product) })
 
     } catch (error) {
         console.log(error)
@@ -122,31 +161,33 @@ const updateProduct = async (req, res) => {
 const setStock = async (req, res) => {
     try {
         const { id, outOfStock, stock, size, quantity, available } = req.body
-        const product = await productModel.findById(id)
-        if (!product) return res.json({ success: false, message: 'Product not found' })
+        const existing = await db.products.byId(id)
+        if (!existing) return res.json({ success: false, message: 'Product not found' })
 
-        if (outOfStock !== undefined) product.outOfStock = asBool(outOfStock)
+        const next = { ...existing, stock: [...(existing.stock || [])] }
+
+        if (outOfStock !== undefined) next.outOfStock = asBool(outOfStock)
 
         if (size) {
-            const entry = product.stock.find(s => s.size === size)
-            if (entry) {
-                if (quantity !== undefined) entry.quantity = Math.max(0, Number(quantity) || 0)
-                if (available !== undefined) entry.available = asBool(available)
-            } else {
-                product.stock.push({ size, quantity: Math.max(0, Number(quantity) || 0), available: available !== false })
-            }
+            const at = next.stock.findIndex(s => s.size === size)
+            const entry = at === -1
+                ? { size, quantity: 0, available: true }
+                : { ...next.stock[at] }
+            if (quantity !== undefined) entry.quantity = Math.max(0, Number(quantity) || 0)
+            if (available !== undefined) entry.available = asBool(available)
+            if (at === -1) next.stock.push(entry)
+            else next.stock[at] = entry
         }
 
-        if (stock !== undefined) {
-            product.stock = buildStock(product.sizes, stock)
-        }
+        if (stock !== undefined) next.stock = buildStock(next.sizes || [], stock)
 
         // A poster with nothing left anywhere is off the floor automatically.
-        const anyLeft = product.stock.some(s => s.available && s.quantity > 0)
-        if (!anyLeft && product.stock.length > 0 && outOfStock === undefined) product.outOfStock = true
+        if (outOfStock === undefined && next.stock.length > 0 && !next.stock.some(s => s.available && s.quantity > 0)) {
+            next.outOfStock = true
+        }
 
-        await product.save()
-        res.json({ success: true, message: 'Stock updated', product: product.toStorefront() })
+        const product = await db.products.put(next)
+        res.json({ success: true, message: 'Stock updated', product: toStorefront(product) })
 
     } catch (error) {
         console.log(error)
@@ -154,11 +195,11 @@ const setStock = async (req, res) => {
     }
 }
 
-// What the storefront reads: live products only.
+// What the storefront reads: live products only, newest first.
 const listProducts = async (req, res) => {
     try {
-        const products = await productModel.find({ active: true }).sort({ date: -1 })
-        res.json({ success: true, products: products.map(p => p.toStorefront()) })
+        const products = (await db.products.find(p => p.active !== false)).sort((a, b) => b.date - a.date)
+        res.json({ success: true, products: products.map(toStorefront) })
     } catch (error) {
         console.log(error)
         res.json({ success: false, message: error.message })
@@ -168,17 +209,17 @@ const listProducts = async (req, res) => {
 // What the admin reads: everything, with the stock detail.
 const adminListProducts = async (req, res) => {
     try {
-        const products = await productModel.find({}).sort({ createdAt: -1 })
+        const products = (await db.products.all()).sort((a, b) => b.date - a.date)
         res.json({
             success: true,
             products: products.map(p => ({
-                ...p.toStorefront(),
-                id: p._id.toString(),
+                ...toStorefront(p),
+                id: p.id,
                 sku: p.sku,
-                active: p.active,
-                stock: p.stock,
-                sold: p.sold,
-                totalStock: p.stock.reduce((sum, s) => sum + (s.available ? s.quantity : 0), 0),
+                active: p.active !== false,
+                stock: p.stock || [],
+                sold: p.sold || 0,
+                totalStock: totalStock(p),
             })),
         })
     } catch (error) {
@@ -189,15 +230,15 @@ const adminListProducts = async (req, res) => {
 
 const removeProduct = async (req, res) => {
     try {
-        const product = await productModel.findById(req.body.id)
+        const product = await db.products.byId(req.body.id)
         if (!product) return res.json({ success: false, message: 'Product not found' })
 
-        // Clear up any images this product owned in GridFS.
-        for (const url of product.image) {
-            const match = /\/api\/media\/file\/([a-f\d]{24})/.exec(url)
-            if (match) await deleteFile(match[1])
+        // Clear up any images this product owned.
+        for (const url of product.image || []) {
+            const match = /\/api\/media\/file\/([\w-]+)/.exec(url)
+            if (match) await deleteBinary(match[1])
         }
-        await product.deleteOne()
+        await db.products.remove(product.id)
         res.json({ success: true, message: 'Product removed' })
     } catch (error) {
         console.log(error)
@@ -208,17 +249,13 @@ const removeProduct = async (req, res) => {
 const singleProduct = async (req, res) => {
     try {
         const { productId } = req.body
-        // Look up by sku ("sk001") or by the database id, whichever came in.
-        const query = /^[a-f\d]{24}$/.test(productId || '')
-            ? { $or: [{ sku: productId }, { _id: productId }] }
-            : { sku: productId }
-        const product = await productModel.findOne(query)
+        const product = await db.products.findOne(p => p.sku === productId || p.id === productId)
         if (!product) return res.json({ success: false, message: 'Product not found' })
-        res.json({ success: true, product: product.toStorefront() })
+        res.json({ success: true, product: toStorefront(product) })
     } catch (error) {
         console.log(error)
         res.json({ success: false, message: error.message })
     }
 }
 
-export { listProducts, adminListProducts, addProduct, updateProduct, setStock, removeProduct, singleProduct }
+export { listProducts, adminListProducts, addProduct, updateProduct, setStock, removeProduct, singleProduct, totalStock }

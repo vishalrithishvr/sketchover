@@ -36,3 +36,6 @@ lerna-debug.log*
 
 # Local Claude Code tool config, not part of the project
 /.claude/
+
+# Local Netlify folder
+.netlify

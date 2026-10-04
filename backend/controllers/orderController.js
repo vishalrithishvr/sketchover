@@ -1,6 +1,15 @@
-import orderModel, { ORDER_STATUSES } from "../models/orderModel.js"
-import productModel from "../models/productModel.js"
-import couponModel from "../models/couponModel.js"
+import { db } from "../lib/db.js"
+
+export const ORDER_STATUSES = [
+    'Order Placed',
+    'Payment Pending',
+    'Paid',
+    'Printing',
+    'Packed',
+    'Shipped',
+    'Delivered',
+    'Cancelled',
+]
 
 // SKO-261004-4F2A
 const makeReference = () => {
@@ -15,19 +24,23 @@ const makeReference = () => {
 const drawDownStock = async (items) => {
     for (const item of items) {
         if (item.isCustom || !item.sku) continue
-        const product = await productModel.findOne({ sku: item.sku })
+        const product = await db.products.findOne(p => p.sku === item.sku)
         if (!product) continue
 
-        const entry = product.stock.find(s => s.size === item.size)
-        if (entry) {
-            entry.quantity = Math.max(0, entry.quantity - item.quantity)
-            if (entry.quantity === 0) entry.available = false
-        }
-        product.sold += item.quantity
-        if (product.stock.length && !product.stock.some(s => s.available && s.quantity > 0)) {
-            product.outOfStock = true
-        }
-        await product.save()
+        const stock = (product.stock || []).map(entry => {
+            if (entry.size !== item.size) return entry
+            const quantity = Math.max(0, entry.quantity - item.quantity)
+            return { ...entry, quantity, available: quantity === 0 ? false : entry.available }
+        })
+
+        await db.products.put({
+            ...product,
+            stock,
+            sold: (product.sold || 0) + item.quantity,
+            outOfStock: stock.length > 0 && !stock.some(s => s.available && s.quantity > 0)
+                ? true
+                : product.outOfStock,
+        })
     }
 }
 
@@ -45,7 +58,7 @@ const placeOrder = async (req, res) => {
             return res.json({ success: false, message: 'A delivery address is required.' })
         }
 
-        const order = new orderModel({
+        const order = await db.orders.put({
             reference: reference || makeReference(),
             userId: req.body.userId || 'guest',
             items,
@@ -61,19 +74,21 @@ const placeOrder = async (req, res) => {
             email: address.email,
             isChennai: !!isChennai,
             paymentMethod: paymentMethod || 'WhatsApp',
+            payment: false,
             status: 'Order Placed',
             statusHistory: [{ status: 'Order Placed', at: Date.now(), note: 'Placed on the website' }],
+            notes: '',
             date: Date.now(),
         })
 
-        await order.save()
         await drawDownStock(items)
 
         if (order.couponCode) {
-            await couponModel.updateOne({ code: order.couponCode }, { $inc: { usedCount: 1 } })
+            const coupon = await db.coupons.findOne(c => c.code === order.couponCode)
+            if (coupon) await db.coupons.put({ ...coupon, usedCount: (coupon.usedCount || 0) + 1 })
         }
 
-        res.json({ success: true, message: 'Order placed', reference: order.reference, orderId: order._id })
+        res.json({ success: true, message: 'Order placed', reference: order.reference, orderId: order.id })
 
     } catch (error) {
         console.log(error)
@@ -84,15 +99,16 @@ const placeOrder = async (req, res) => {
 const allOrders = async (req, res) => {
     try {
         const { status, search, limit } = req.body
-        const query = {}
-        if (status && status !== 'All') query.status = status
+        let orders = (await db.orders.all()).sort((a, b) => b.date - a.date)
+
+        if (status && status !== 'All') orders = orders.filter(o => o.status === status)
         if (search) {
-            const rx = new RegExp(String(search).trim(), 'i')
-            query.$or = [{ reference: rx }, { customerName: rx }, { phone: rx }, { email: rx }]
+            const needle = String(search).trim().toLowerCase()
+            orders = orders.filter(o => [o.reference, o.customerName, o.phone, o.email]
+                .filter(Boolean).some(field => String(field).toLowerCase().includes(needle)))
         }
 
-        const orders = await orderModel.find(query).sort({ date: -1 }).limit(Number(limit) || 200)
-        res.json({ success: true, orders })
+        res.json({ success: true, orders: orders.slice(0, Number(limit) || 200).map(o => ({ ...o, _id: o.id })) })
     } catch (error) {
         console.log(error)
         res.json({ success: false, message: error.message })
@@ -101,8 +117,8 @@ const allOrders = async (req, res) => {
 
 const userOrders = async (req, res) => {
     try {
-        const orders = await orderModel.find({ userId: req.body.userId }).sort({ date: -1 })
-        res.json({ success: true, orders })
+        const orders = (await db.orders.find(o => o.userId === req.body.userId)).sort((a, b) => b.date - a.date)
+        res.json({ success: true, orders: orders.map(o => ({ ...o, _id: o.id })) })
     } catch (error) {
         console.log(error)
         res.json({ success: false, message: error.message })
@@ -112,8 +128,10 @@ const userOrders = async (req, res) => {
 // Look an order up by its reference — what a customer quotes on WhatsApp.
 const trackOrder = async (req, res) => {
     try {
-        const order = await orderModel.findOne({ reference: (req.body.reference || '').trim().toUpperCase() })
+        const reference = (req.body.reference || '').trim().toUpperCase()
+        const order = await db.orders.findOne(o => o.reference === reference)
         if (!order) return res.json({ success: false, message: 'No order with that reference.' })
+
         res.json({
             success: true,
             order: {
@@ -138,23 +156,25 @@ const updateStatus = async (req, res) => {
             return res.json({ success: false, message: 'Unknown status' })
         }
 
-        const order = await orderModel.findById(orderId)
-        if (!order) return res.json({ success: false, message: 'Order not found' })
+        const existing = await db.orders.byId(orderId)
+        if (!existing) return res.json({ success: false, message: 'Order not found' })
 
-        if (status && status !== order.status) {
-            order.status = status
-            order.statusHistory.push({ status, at: Date.now(), note: note || '' })
-            if (status === 'Paid') order.payment = true
+        const next = { ...existing, statusHistory: [...(existing.statusHistory || [])] }
+
+        if (status && status !== existing.status) {
+            next.status = status
+            next.statusHistory.push({ status, at: Date.now(), note: note || '' })
+            if (status === 'Paid') next.payment = true
         }
-        if (payment !== undefined) order.payment = payment === true || payment === 'true'
-        if (note !== undefined && !status) order.notes = note
+        if (payment !== undefined) next.payment = payment === true || payment === 'true'
+        if (note !== undefined && !status) next.notes = note
 
-        await order.save()
-        res.json({ success: true, message: 'Order updated', order })
+        const order = await db.orders.put(next)
+        res.json({ success: true, message: 'Order updated', order: { ...order, _id: order.id } })
     } catch (error) {
         console.log(error)
         res.json({ success: false, message: error.message })
     }
 }
 
-export { placeOrder, allOrders, userOrders, updateStatus, trackOrder, ORDER_STATUSES }
+export { placeOrder, allOrders, userOrders, updateStatus, trackOrder }

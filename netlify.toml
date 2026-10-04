@@ -1,0 +1,32 @@
+# The admin panel and the API are one Netlify site: the panel is the static
+# build, the API is a function behind /api. Same origin, so the browser never
+# has to be talked into letting them speak to each other.
+
+[build]
+  command = "npm --prefix admin install --no-audit --no-fund && npm --prefix admin run build"
+  publish = "admin/dist"
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+  # The function imports the API out of backend/, which is outside its folder.
+  included_files = ["backend/**"]
+
+# Everything under /api (and /health) is the API.
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/api/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/health"
+  to = "/.netlify/functions/api/health"
+  status = 200
+  force = true
+
+# The panel is a single-page app; every other path is its index.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
