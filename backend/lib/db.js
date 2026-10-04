@@ -16,7 +16,13 @@ const LOCAL_DIR = path.resolve(process.env.LOCAL_DATA_DIR || '.data')
 
 let blobStorePromise = null
 
-const onNetlify = () => !!(process.env.NETLIFY || process.env.NETLIFY_BLOBS_CONTEXT || process.env.AWS_LAMBDA_FUNCTION_NAME)
+// v2 functions expose a global Netlify object; older ones only env vars.
+const onNetlify = () => !!(
+    globalThis.Netlify
+    || process.env.NETLIFY_BLOBS_CONTEXT
+    || process.env.NETLIFY
+    || process.env.AWS_LAMBDA_FUNCTION_NAME
+)
 
 const blobStore = async () => {
     if (!blobStorePromise) {

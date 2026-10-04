@@ -12,18 +12,8 @@
   # The function imports the API out of backend/, which is outside its folder.
   included_files = ["backend/**"]
 
-# Everything under /api (and /health) is the API.
-[[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/api/api/:splat"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/health"
-  to = "/.netlify/functions/api/health"
-  status = 200
-  force = true
+# /api and /health are claimed by the function itself (see its `config.path`),
+# which wins over the redirect below.
 
 # The panel is a single-page app; every other path is its index.
 [[redirects]]
