@@ -1,19 +1,25 @@
 import jwt from 'jsonwebtoken'
 
-const adminAuth = async (req,res,next) => {
+// Admin routes carry the token from /api/user/admin in a `token` header.
+const adminAuth = async (req, res, next) => {
     try {
         const { token } = req.headers
         if (!token) {
-            return res.json({success:false,message:"Not Authorized Login Again"})
+            return res.json({ success: false, message: "Not Authorized Login Again" })
         }
-        const token_decode = jwt.verify(token,process.env.JWT_SECRET);
-        if (token_decode !== process.env.ADMIN_EMAIL + process.env.ADMIN_PASSWORD) {
-            return res.json({success:false,message:"Not Authorized Login Again"})
+
+        const decoded = jwt.verify(token, process.env.JWT_SECRET)
+        if (decoded?.role !== 'admin' || decoded?.user !== process.env.ADMIN_EMAIL) {
+            return res.json({ success: false, message: "Not Authorized Login Again" })
         }
+
         next()
     } catch (error) {
-        console.log(error)
-        res.json({ success: false, message: error.message })
+        // An expired session should say so, rather than looking like a bug.
+        const message = error.name === 'TokenExpiredError'
+            ? 'Your session has expired — sign in again.'
+            : "Not Authorized Login Again"
+        res.json({ success: false, message })
     }
 }
 

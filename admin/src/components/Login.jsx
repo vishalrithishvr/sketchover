@@ -1,45 +1,79 @@
-import axios from 'axios'
 import React, { useState } from 'react'
-import { backendUrl } from '../App'
+import axios from 'axios'
 import { toast } from 'react-toastify'
+import { backendUrl } from '../api'
+import Logo from './Logo'
 
-const Login = ({setToken}) => {
+const Login = ({ setToken }) => {
+  // The studio signs in with a username, not an email address.
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [busy, setBusy] = useState(false)
 
-    const [email,setEmail] = useState('')
-    const [password,setPassword] = useState('')
-
-    const onSubmitHandler = async (e) => {
-        try {
-            e.preventDefault();
-            const response = await axios.post(backendUrl + '/api/user/admin',{email,password})
-            if (response.data.success) {
-                setToken(response.data.token)
-            } else {
-                toast.error(response.data.message)
-            }
-             
-        } catch (error) {
-            console.log(error);
-            toast.error(error.message)
-        }
+  const onSubmit = async (e) => {
+    e.preventDefault()
+    setBusy(true)
+    try {
+      const { data } = await axios.post(`${backendUrl}/api/user/admin`, {
+        email: username.trim(),
+        password,
+      })
+      if (data.success) {
+        setToken(data.token)
+      } else {
+        toast.error(data.message || 'Those details did not match.')
+      }
+    } catch (error) {
+      toast.error(error?.response?.data?.message || error.message)
+    } finally {
+      setBusy(false)
     }
+  }
 
   return (
-    <div className='min-h-screen flex items-center justify-center w-full'>
-        <div className='bg-white shadow-md rounded-lg px-8 py-6 max-w-md'>
-            <h1 className='text-2xl font-bold mb-4'>Admin Panel</h1>
-            <form onSubmit={onSubmitHandler}>
-                <div className='mb-3 min-w-72'>
-                    <p className='text-sm font-medium text-gray-700 mb-2'>Email Address</p>
-                    <input onChange={(e)=>setEmail(e.target.value)} value={email} className='rounded-md w-full px-3 py-2 border border-gray-300 outline-none' type="email" placeholder='your@email.com' required />
-                </div>
-                <div className='mb-3 min-w-72'>
-                    <p className='text-sm font-medium text-gray-700 mb-2'>Password</p>
-                    <input onChange={(e)=>setPassword(e.target.value)} value={password} className='rounded-md w-full px-3 py-2 border border-gray-300 outline-none' type="password" placeholder='Enter your password' required />
-                </div>
-                <button className='mt-2 w-full py-2 px-4 rounded-md text-white bg-black' type="submit"> Login </button>
-            </form>
+    <div className='min-h-screen flex items-center justify-center px-4'>
+      <div className='w-full max-w-sm'>
+        <div className='flex justify-center mb-6'>
+          <Logo />
         </div>
+
+        <form onSubmit={onSubmit} className='bg-white border border-gray-200 rounded-lg p-6'>
+          <h1 className='text-lg text-gray-900 mb-1'>Sign in</h1>
+          <p className='text-xs text-gray-500 mb-5'>The order desk, stock and media for sketchover.in.</p>
+
+          <label className='block mb-3'>
+            <span className='block text-xs text-gray-500 mb-1'>Username</span>
+            <input
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              autoComplete='username'
+              required
+              className='w-full px-3 py-2 text-sm'
+              placeholder='Skoadmin'
+            />
+          </label>
+
+          <label className='block mb-5'>
+            <span className='block text-xs text-gray-500 mb-1'>Password</span>
+            <input
+              type='password'
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete='current-password'
+              required
+              className='w-full px-3 py-2 text-sm'
+            />
+          </label>
+
+          <button
+            type='submit'
+            disabled={busy}
+            className='w-full bg-black text-white text-sm py-2.5 rounded hover:bg-brand transition-colors disabled:bg-gray-400'
+          >
+            {busy ? 'Signing in…' : 'Sign in'}
+          </button>
+        </form>
+      </div>
     </div>
   )
 }

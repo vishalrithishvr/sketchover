@@ -87,7 +87,14 @@ const adminLogin = async (req, res) => {
         const {email,password} = req.body
 
         if (email === process.env.ADMIN_EMAIL && password === process.env.ADMIN_PASSWORD) {
-            const token = jwt.sign(email+password,process.env.JWT_SECRET);
+            // Sign a claim, not the credentials themselves: a JWT payload is
+            // only base64, so signing "user+password" put the admin password in
+            // plain sight of anyone holding the token. It expires, too.
+            const token = jwt.sign(
+                { role: 'admin', user: email },
+                process.env.JWT_SECRET,
+                { expiresIn: '7d' }
+            )
             res.json({success:true,token})
         } else {
             res.json({success:false,message:"Invalid credentials"})
